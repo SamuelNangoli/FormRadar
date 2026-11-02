@@ -107,7 +107,7 @@ async function main() {
   process.umask(0o077);
   if(process.argv.length!==2)fail("Use npm run model:prepare-cl without arguments.");
   const env={...process.env,PYTHONDONTWRITEBYTECODE:"1",OPENBLAS_NUM_THREADS:"1",OMP_NUM_THREADS:"1"};
-  for(const k of Object.keys(env))if(/^(FOOTBALL_DATA_|GUARDIAN_API_KEY$|API_FOOTBALL_KEY$)/i.test(k))delete env[k];
+  for(const k of Object.keys(env))if(/^(FOOTBALL_DATA_|GUARDIAN_API_KEY$|API_FOOTBALL_KEY$|UPSTASH_REDIS_|FORMRADAR_CLOUD_NAMESPACE$)/i.test(k))delete env[k];
   const python=join(VENV,"bin/python3"),probe=spawnSync(python,["-c","import numpy,scipy"],{env,stdio:"pipe"});
   if(probe.status!==0)fail("Run npm run model:setup first.");
   loadServerEnv();const key=process.env.FOOTBALL_DATA_API_KEY;

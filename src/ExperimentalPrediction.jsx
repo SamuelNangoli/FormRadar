@@ -37,8 +37,10 @@ export default function ExperimentalPrediction({ match, refresh, backendCurrent 
       {!resource.loading && !resource.error && !valid && <div className="model-unavailable" role="status">
         <b>{!backendCurrent ? "Restart FormRadar to load the update" : !supported ? "League model not available" : data?.reason === "DATA_STALE" ? "Model data needs updating" : data?.reason === "MATCH_STARTED" ? "Pre-match estimates are closed" : data?.reason === "FIXTURE_DATA_STALE" ? "Fixture check temporarily unavailable" : "Estimate unavailable"}</b>
         <p>{!backendCurrent ? "Your running server still has the older code loaded. In the terminal running FormRadar, press Ctrl+C, run npm run dev again, then reload this page. Your saved model is preserved." : !supported ? "Evaluated experimental models currently cover the Premier League and Champions League league phase." : data?.available ? "This estimate has expired or kickoff has passed. Refresh to check availability." : data?.message || "The experimental model is not ready."}</p>
-        {backendCurrent && ["DATA_STALE","MODEL_NOT_READY"].includes(data?.reason) && <p>Prepare today’s {champions ? "Champions League" : "Premier League"} model in the app folder with <code>{command}</code>, then use Refresh data. Run this refresh each UTC day, starting at 03:00 Uganda time.</p>}
-        {backendCurrent && data?.reason === "MODEL_INVALID" && <p>Restart FormRadar to load the latest code first. If validation still fails, prepare this competition again with <code>{command}</code>. No example probabilities will be substituted.</p>}
+        {backendCurrent && data?.hosting!=="cloud" && ["DATA_STALE","MODEL_NOT_READY"].includes(data?.reason) && <p>Prepare today’s {champions ? "Champions League" : "Premier League"} model in the app folder with <code>{command}</code>, then use Refresh data. Run this refresh each UTC day, starting at 03:00 Uganda time.</p>}
+        {backendCurrent && data?.hosting==="cloud" && ["DATA_STALE","MODEL_NOT_READY"].includes(data?.reason) && <p>The app owner needs to refresh the model on their computer and publish it to the hosted model store. Your browser cannot run training.</p>}
+        {backendCurrent && data?.hosting!=="cloud" && data?.reason === "MODEL_INVALID" && <p>Restart FormRadar to load the latest code first. If validation still fails, prepare this competition again with <code>{command}</code>. No example probabilities will be substituted.</p>}
+        {backendCurrent && data?.hosting==="cloud" && data?.reason==="MODEL_INVALID" && <p>The hosted model did not pass validation. The app owner needs to validate and publish a fresh model. No example probabilities are substituted.</p>}
         {data?.reason === "FIXTURE_DATA_STALE" && <p>Saved forecasts remain listed below. An updated fixture status is needed before another estimate can be returned.</p>}
         {backendCurrent && supported && !["MODEL_NOT_READY","MODEL_INVALID","DATA_STALE","MATCH_STARTED","UNSUPPORTED_STAGE"].includes(data?.reason) && <button className="quiet-button" onClick={() => setRetry(n=>n+1)}>Retry fixture check</button>}
       </div>}
@@ -75,10 +77,11 @@ export default function ExperimentalPrediction({ match, refresh, backendCurrent 
     {valid && data.scoreline && <ScorelineHeatmap key={data.forecastId} scoreline={data.scoreline} match={match}/>}
     {valid&&!data.scoreline&&<section className="panel"><p className="source-note">Restart FormRadar and reload this page to enable the scoreline heat map. Saved forecasts are preserved.</p></section>}
     <section className="panel model-history">
-      <div className="panel-title"><span>Saved pre-match forecasts</span><span className="subtle">{saved.length} {saved.length === 1 ? "revision" : "revisions"}</span></div>
+      <div className="panel-title"><span>Saved pre-match forecasts</span><span className="subtle">{history.error||history.data?.storageAvailable===false?"History unavailable":history.loading?"Checking…":`${saved.length} ${saved.length===1?"revision":"revisions"}`}</span></div>
       {history.loading && <Loading label="Loading saved forecasts…" />}
       {history.error && <ErrorNotice error={history.error} onRetry={() => setRetry((n) => n+1)} />}
-      {!history.loading && !history.error && !saved.length && <p className="source-note">No forecast has been saved for this fixture yet.</p>}
+      {!history.loading && !history.error && history.data?.storageAvailable!==false && !saved.length && <p className="source-note">No forecast has been saved for this fixture yet.</p>}
+      {history.data?.storageAvailable===false&&<p className="source-note">{history.data.message}</p>}
       {saved.length > 0 && <div className="table-scroll"><table><caption className="sr-only">Actual saved experimental forecasts, never backfilled</caption><thead><tr><th>Saved</th><th>Home</th><th>Draw</th><th>Away</th><th>Model</th></tr></thead><tbody>{saved.map((f) => {
         const p = displayPercentages(f.probabilities);
         return <tr key={f.forecastId}><td>{date(f.generatedAt)}</td>{p.map((v,i) => <td key={i}>{v}%</td>)}<td title={f.modelVersion}>{f.modelVersion.slice(0,8)}</td></tr>;

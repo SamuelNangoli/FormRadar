@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm ci",
+  "devCommand": "vite --host 127.0.0.1 --port $PORT",
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 60,
+      "excludeFiles": "{.env*,.formradar-model/**,.venv-model/**,model/**/*.py,model/**/requirements*.txt,model/setup.mjs,model/import.mjs,model/run.mjs,model/current.mjs,model/champions.mjs,tests/**,docs/**,node_modules/@esbuild/**,node_modules/esbuild/**,node_modules/vite/**}"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    }
+  ]
+}

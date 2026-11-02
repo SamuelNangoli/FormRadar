@@ -1,0 +1,10 @@
+.env
+.env.*
+.formradar-model
+.venv-model
+__pycache__
+**/__pycache__
+*.pyc
+.git
+outputs
+tests

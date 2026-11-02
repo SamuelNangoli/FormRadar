@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.12.0"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -21,7 +21,8 @@
     "model:refit": "node model/run.mjs refit",
     "model:prepare-current": "node model/current.mjs",
     "model:prepare-cl": "node model/champions.mjs",
-    "model:test": "node model/run.mjs test"
+    "model:test": "node model/run.mjs test",
+    "model:publish": "node model/cloud.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

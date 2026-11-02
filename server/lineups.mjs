@@ -25,7 +25,7 @@ export function matchFixture(candidates,match){
   return found.length===1?found[0]:null;
 }
 
-export function createLineupSource({key,fetchImpl=fetch,now=Date.now,maxCalls=8,maxDaily=90}={}){
+export function createLineupSource({key,fetchImpl=fetch,now=Date.now,maxCalls=8,maxDaily=90,sharedStore}={}){
   const configured=Boolean(key?.trim()&&/^[A-Za-z0-9_-]{16,128}$/.test(key.trim())&&!/^(your|paste|replace)/i.test(key.trim()));
   const cache=new Map(),pending=new Map(),restrictedPaths=new Map(),calls=[];let day="",daily=0,cooldownUntil=0;
   async function get(path,ttl=120000){
@@ -37,6 +37,7 @@ export function createLineupSource({key,fetchImpl=fetch,now=Date.now,maxCalls=8,
       while(calls.length&&now()-calls[0]>=60000)calls.shift();
       if(now()<cooldownUntil||calls.length>=maxCalls||daily>=maxDaily)throw new ApiError(429,"LINEUP_RATE_LIMITED","The lineup request budget is busy. Wait and retry; existing match information remains available.",60);
       calls.push(now());daily++;let response;
+      if(sharedStore){let budget;try{budget=await sharedStore.budget('lineups',[{window:60000,limit:maxCalls},{window:86400000,limit:maxDaily}]);}catch{throw new ApiError(503,"CLOUD_STORAGE_UNAVAILABLE","The shared lineup request budget could not be checked. Retry shortly.");}if(!budget.allowed)throw new ApiError(429,"LINEUP_RATE_LIMITED","The shared lineup request budget is busy. Retry later.",budget.retryAfter);}
       try{response=await fetchImpl("https://v3.football.api-sports.io"+path,{headers:{"x-apisports-key":key.trim(),Accept:"application/json"},redirect:"error",signal:AbortSignal.timeout(12000)});}catch{throw new ApiError(502,"LINEUP_SOURCE_UNAVAILABLE","The lineup provider could not be reached. Please retry.");}
       if(response.status===401||response.status===403)throw new ApiError(401,"LINEUP_KEY_REJECTED","The API-Football key or its access was rejected. Check the local key and account coverage.");
       if(response.status===429){cooldownUntil=now()+60000;throw new ApiError(429,"LINEUP_RATE_LIMITED","The lineup provider request limit was reached. Please retry later.",60);}

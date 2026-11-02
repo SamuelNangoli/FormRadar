@@ -33,7 +33,7 @@ export function normalizeNews(raw, now = Date.now()) {
   return [...found.values()].sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0,20);
 }
 
-export function createNews({ key, fetchImpl=fetch, now=Date.now, maxPerMinute=30, maxPerDay=450, wait=(ms)=>new Promise(r=>setTimeout(r,ms)) } = {}) {
+export function createNews({ key, fetchImpl=fetch, now=Date.now, maxPerMinute=30, maxPerDay=450, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), sharedStore } = {}) {
   const configured=Boolean(typeof key==="string" && /^[A-Za-z0-9_-]{8,128}$/.test(key.trim()) && !/^(your|replace|paste)/i.test(key.trim()));
   const cache=new Map(),pending=new Map(),calls=[];
   let day="",daily=0,cooldownUntil=0,nextSlot=-Infinity,cooldownError;
@@ -50,6 +50,10 @@ export function createNews({ key, fetchImpl=fetch, now=Date.now, maxPerMinute=30
     if(calls.length>=maxPerMinute||delay>3300)throw new ApiError(429,"NEWS_RATE_LIMITED","News requests are busy. Wait a moment and retry.",calls.length>=maxPerMinute?60:4);
     nextSlot=now()+delay+1100;calls.push(now()+delay);daily++;
     if(delay)await wait(delay);
+    if(sharedStore){
+      let budget;try{budget=await sharedStore.budget('guardian',[{window:1100,limit:1},{window:60000,limit:maxPerMinute},{window:86400000,limit:maxPerDay}]);}catch{throw new ApiError(503,"CLOUD_STORAGE_UNAVAILABLE","The shared news request budget could not be checked. Retry shortly.");}
+      if(!budget.allowed)throw new ApiError(429,"NEWS_RATE_LIMITED","News requests are busy. Wait a moment and retry.",budget.retryAfter);
+    }
     if(now()<cooldownUntil)throw new ApiError(cooldownError.status,cooldownError.code,cooldownError.message,Math.ceil((cooldownUntil-now())/1000));
     const url=new URL("https://content.guardianapis.com/search");
     url.search=new URLSearchParams({"api-key":key.trim(),section:"football",q:query,"order-by":"newest","page-size":"20",

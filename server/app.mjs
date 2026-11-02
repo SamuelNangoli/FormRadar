@@ -6,6 +6,7 @@ import { createPredictions } from "./predictions.mjs";
 import { createNews, newsTopics } from "./news.mjs";
 import { createMatchInsights } from "./match-insights.mjs";
 import {seasonYear,seasonList} from "./seasons.mjs";
+import {CloudStoreError} from "./cloud-store.mjs";
 import {
   ApiError,
   createProvider,
@@ -63,11 +64,14 @@ export function createApp({
   newsFetchImpl,
   lineupKey = process.env.API_FOOTBALL_KEY,
   lineupFetchImpl,
+  cloudStore,
+  hosted = false,
 } = {}) {
-  const provider = createProvider({ key, baseUrl, fetchImpl, now, maxCalls });
-  const predictions = createPredictions({ root: modelRoot, provider, now });
-  const news = createNews({key:guardianKey,fetchImpl:newsFetchImpl,now});
-  const insights = createMatchInsights({provider,lineupKey,lineupFetchImpl,now,secrets:[key,guardianKey,lineupKey]});
+  const sharedStore=cloudStore?.configured?cloudStore:undefined;
+  const provider = createProvider({ key, baseUrl, fetchImpl, now, maxCalls, sharedStore });
+  const predictions = createPredictions({ root: modelRoot, provider, now, store:sharedStore, hosted });
+  const news = createNews({key:guardianKey,fetchImpl:newsFetchImpl,now,sharedStore});
+  const insights = createMatchInsights({provider,lineupKey,lineupFetchImpl,now,sharedStore,secrets:[key,guardianKey,lineupKey]});
   async function api(url) {
     const params = url.searchParams;
     if (url.pathname === "/api/config" || url.pathname === "/api/health") {
@@ -82,6 +86,8 @@ export function createApp({
         seasonsApiVersion:1,
         lineupSourceConfigured:insights.lineupConfigured,
         scoresMayBeDelayed: true,
+        hosting:hosted?"vercel":"local",
+        cloudStorageConfigured:Boolean(sharedStore),
         competitions,
       };
     }
@@ -334,6 +340,8 @@ export function createApp({
       const safe =
         error instanceof ApiError
           ? error
+          : error instanceof CloudStoreError
+          ? new ApiError(503,"CLOUD_STORAGE_UNAVAILABLE","Cloud storage is unavailable. Ask the app owner to check its server settings and retry.")
           : new ApiError(
               500,
               "INTERNAL_ERROR",

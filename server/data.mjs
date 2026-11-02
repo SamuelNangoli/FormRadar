@@ -140,6 +140,7 @@ export function createProvider({
   now = Date.now,
   maxCalls = 9,
   cacheLimit = 200,
+  sharedStore,
 } = {}) {
   // Never send credentials to a configurable third-party host or follow redirects.
   let base;
@@ -186,6 +187,12 @@ export function createProvider({
         Math.max(1, Math.ceil((60_000 - time + calls[0]) / 1000)),
       );
     calls.push(time);
+    if(sharedStore){
+      let budget;
+      try{budget=await sharedStore.budget('football',[{window:60000,limit:maxCalls}]);}
+      catch{throw new ApiError(503,"CLOUD_STORAGE_UNAVAILABLE","The shared football request budget could not be checked. Retry shortly.");}
+      if(!budget.allowed)throw new ApiError(429,"RATE_LIMITED","The shared football request budget is busy. Please retry shortly.",budget.retryAfter);
+    }
     let response;
     try {
       const target = new URL(`${base}${path}`);
@@ -255,7 +262,9 @@ export function createProvider({
       ));
     }
     try {
-      return await response.json();
+      const body=await response.json();
+      if(JSON.stringify(body).includes(key.trim()))throw new Error();
+      return body;
     } catch {
       throw coolDown(new ApiError(
         502,
@@ -279,7 +288,7 @@ export function createProvider({
         "CONFIGURATION_REQUIRED",
         "Add FOOTBALL_DATA_API_KEY to the project .env file and restart FormRadar.",
       );
-    const entry = cache.get(path);
+    let entry = cache.get(path);
     const envelope = (item, cacheState, warning) => ({
       data: item.data,
       meta: {
@@ -295,10 +304,19 @@ export function createProvider({
     if (pending.has(path)) return pending.get(path);
     const work = (async () => {
       try {
+        if(sharedStore){
+          let stored;
+          try{stored=await sharedStore.readProvider(path);}catch{throw new ApiError(503,"CLOUD_STORAGE_UNAVAILABLE","The shared football cache could not be reached. Retry shortly.");}
+          if(stored&&Number.isFinite(stored.at)&&stored.at<=now()&&now()-stored.at<=86_400_000&&Object.hasOwn(stored,'data')){
+            if(!entry||stored.at>entry.at)entry=stored;
+            if(now()-entry.at<ttl){if(cache.size>=cacheLimit&&!cache.has(path))cache.delete(cache.keys().next().value);cache.set(path,entry);return envelope(entry,"hit");}
+          }
+        }
         const item = { data: transform(await request(path)), at: now() };
         if (cache.size >= cacheLimit && !cache.has(path))
           cache.delete(cache.keys().next().value);
         cache.set(path, item);
+        if(sharedStore)await sharedStore.writeProvider(path,item).catch(()=>{});
         return envelope(item, "miss");
       } catch (error) {
         if (

@@ -19,8 +19,8 @@ export function reportedXI(team){
   if(people.length!==11||rows.length!==11)return null;
   return {players:people,bench:(Array.isArray(team.bench)?team.bench:[]).filter(p=>validId(p?.id)&&typeof p.name==="string").slice(0,25).map(p=>({provider:"football-data.org",id:p.id,name:p.name.trim().slice(0,100),shirtNumber:Number.isInteger(p.shirtNumber)?p.shirtNumber:null,position:typeof p.position==="string"?p.position:null})),formation:typeof team.formation==="string"?team.formation:null,coach:typeof team.coach?.name==="string"?team.coach.name:null};
 }
-export function createMatchInsights({provider,lineupKey,lineupFetchImpl,now=Date.now,secrets=[]}){
-  const source=createLineupSource({key:lineupKey,fetchImpl:lineupFetchImpl,now});
+export function createMatchInsights({provider,lineupKey,lineupFetchImpl,now=Date.now,secrets=[],sharedStore}){
+  const source=createLineupSource({key:lineupKey,fetchImpl:lineupFetchImpl,now,sharedStore});
   function isolate(data){if(secrets.some(s=>s?.trim()&&JSON.stringify(data).includes(s.trim())))throw new ApiError(502,"INVALID_PROVIDER_DATA","The match response failed credential isolation.");}
   async function fixture(id){const response=await provider.get(`/matches/${id}`,60000,v=>v);const m=response.data;if(m?.id!==id||!validId(m.homeTeam?.id)||!validId(m.awayTeam?.id)||m.homeTeam.id===m.awayTeam.id||typeof m.utcDate!=="string"||!Number.isFinite(Date.parse(m.utcDate)))throw new ApiError(502,"INVALID_PROVIDER_DATA","The selected fixture could not be validated.");isolate(m);return response;}
   async function headToHead(id){const selected=await fixture(id);const raw=await provider.get(`/matches/${id}/head2head?limit=10`,900000,v=>v);isolate(raw.data);return {data:normalizeHeadToHead(raw.data,selected.data,now()),meta:{...raw.meta,stale:raw.meta.stale||selected.meta.stale}};}

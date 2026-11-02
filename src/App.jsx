@@ -74,7 +74,8 @@ const headings = {
   ],
 };
 
-function Setup({ onDemo, onRetry }) {
+function Setup({ onDemo, onRetry, hosted=false }) {
+  if(hosted)return <section className="panel setup-panel"><div className="setup-icon"><KeyRound size={28}/></div><h2>Football feed setup needed</h2><p>The football feed has not been connected for this hosted app yet. The app owner needs to finish setup.</p><div className="setup-actions"><button className="primary-button" onClick={onRetry}><RefreshCw size={15}/> Check connection</button><button className="quiet-button" onClick={onDemo}>Open demo preview <ArrowRight size={15}/></button></div></section>;
   return (
     <section className="panel setup-panel">
       <div className="setup-icon">
@@ -528,6 +529,7 @@ export default function App() {
           )}
           {!ready && !config.loading && page !== "News Radar" && (
             <Setup
+              hosted={config.data?.hosting==="vercel"}
               onDemo={() => switchMode("demo")}
               onRetry={() => setRefresh((n) => n + 1)}
             />

@@ -19,6 +19,8 @@ const stamp = (v) => {
 };
 const hex = (v, n) => new RegExp(`^[a-f0-9]{${n}}$`).test(v);
 export const reasons = {
+  CLOUD_STORAGE_REQUIRED: "The hosted model store has not been connected. The app owner needs to configure cloud storage and publish the prepared models.",
+  CLOUD_STORAGE_UNAVAILABLE: "The hosted model store could not be reached. Please retry shortly.",
   MODEL_NOT_READY: "Prepare the current-season model on this computer first.",
   MODEL_INVALID: "The saved experimental model could not be validated. Restart FormRadar with the latest code before preparing this competition again.",
   DATA_STALE: "Model data needs updating. Refresh the current-season model, then retry.",
@@ -28,10 +30,10 @@ export const reasons = {
   MATCH_STARTED: "New pre-match estimates stop at kickoff. Saved forecasts remain in history.",
   FIXTURE_DATA_STALE: "A fresh fixture check is needed before generating an estimate.",
   OUTSIDE_HORIZON: "Estimates are available within seven days of kickoff.",
-  STORAGE_UNAVAILABLE: "The forecast could not be saved. Retry after checking local storage.",
+  STORAGE_UNAVAILABLE: "The forecast could not be saved. Please retry or ask the app owner to check forecast storage.",
 };
 const unavailable = (reason) => ({ available: false, reason, message: reasons[reason], probabilities: null });
-const validForecast = (f, id) => f.matchId === id && hex(f.forecastId,64) && hex(f.modelVersion,32)
+export const validForecast = (f, id) => f.matchId === id && hex(f.forecastId,64) && hex(f.modelVersion,32)
   && hex(f.datasetVersion,64) && hex(f.snapshotVersion,64) && stamp(f.generatedAt) && stamp(f.kickoffAt)
   && Date.parse(f.generatedAt) < Date.parse(f.kickoffAt) && f.mode === "experimental" && f.retrospective === false
   && [f.probabilities?.home,f.probabilities?.draw,f.probabilities?.away].every((p) => Number.isFinite(p) && p >= 0 && p <= 1)
@@ -126,34 +128,46 @@ const details = (m) => ({ mode: "experimental", competition:m.competition, model
   dataAsOf: m.dataAsOf, coverageThrough: m.coverageThrough, expiresAt: m.expiresAt,
   evaluationRef: m.evaluationReference, evaluationUrl: `/api/model/evaluation?competition=${m.competition}`, evaluationIsForDifferentFittedArtifact: true });
 
-export function createPredictions({ root = PRIVATE, provider, now = Date.now } = {}) {
+export function createPredictions({ root = PRIVATE, provider, now = Date.now, store, hosted = false } = {}) {
   const pending = new Map();
   async function load(competition = "PL") {
     if (!MODEL_SCOPES[competition]) return unavailable("UNSUPPORTED_COMPETITION");
+    if(hosted&&!store?.configured)return unavailable("CLOUD_STORAGE_REQUIRED");
     const modelRoot = competition === "CL" ? join(root,"champions-league") : root;
     try {
       let pointer;
-      try { pointer = JSON.parse(await readFile(join(modelRoot,"EXPERIMENTAL"),"utf8")); }
-      catch (e) { if (e.code === "ENOENT") return unavailable("MODEL_NOT_READY"); throw e; }
+      let bytes;
+      if(store?.configured){const bundle=await store.loadModel(competition);if(!bundle)return {...unavailable("MODEL_NOT_READY"),message:"The app owner needs to publish a prepared current-season model to the hosted store."};pointer=bundle.pointer;bytes=Buffer.from(bundle.json,"utf8");}
+      else {
+        try { pointer = JSON.parse(await readFile(join(modelRoot,"EXPERIMENTAL"),"utf8")); }
+        catch (e) { if (e.code === "ENOENT") return unavailable("MODEL_NOT_READY"); throw e; }
+        require(/^experimental-[A-Za-z0-9-]+$/.test(pointer.run));
+        bytes=await readFile(join(modelRoot,"runs",pointer.run,"model.json"));
+      }
       require(/^experimental-[A-Za-z0-9-]+$/.test(pointer.run) && hex(pointer.sha256,64));
-      const bytes = await readFile(join(modelRoot,"runs",pointer.run,"model.json"));
       require(digest(bytes) === pointer.sha256);
       const model = validateModel(JSON.parse(bytes));
       require(model.competition === competition);
       const time = now();
       if (time < Date.parse(model.trainedAt) || time >= Date.parse(model.expiresAt)) return { ...unavailable("DATA_STALE"), ...details(model) };
       return { available: true, model };
-    } catch { return unavailable("MODEL_INVALID"); }
+    } catch (error) {const reason=error.code==="CLOUD_STORAGE_UNAVAILABLE"?"CLOUD_STORAGE_UNAVAILABLE":"MODEL_INVALID";return {...unavailable(reason),...(hosted&&reason==="MODEL_INVALID"?{message:"The hosted experimental model did not pass validation. The app owner needs to validate and publish a fresh model."}:{})};}
   }
   async function status(competition = "PL") {
     const state = await load(competition);
-    return state.available ? { available: true, ...details(state.model) } : state;
+    return state.available ? { available: true, ...details(state.model), hosting:hosted?"cloud":"local" } : {...state,hosting:hosted?"cloud":"local"};
   }
   async function evaluation(competition = "PL") {
     const state = await load(competition);
-    return state.available ? { available: true, ...details(state.model), retrospective: true, ...state.model.evaluation } : state;
+    return state.available ? { available: true, ...details(state.model), retrospective: true, ...state.model.evaluation } : {...state,hosting:hosted?"cloud":"local"};
   }
   async function history(id) {
+    if(hosted&&!store?.configured)return {forecasts:[],storageAvailable:false,message:reasons.CLOUD_STORAGE_REQUIRED};
+    if(store?.configured){
+      const forecasts=await store.readForecasts(id);
+      for(const f of forecasts)require(validForecast(f,id));
+      return {forecasts:forecasts.sort((a,b)=>a.generatedAt.localeCompare(b.generatedAt)),storageAvailable:true};
+    }
     const folder = join(root,"forecasts",String(id));
     let names;
     try { names = await readdir(folder); } catch (e) { if (e.code === "ENOENT") return { forecasts: [] }; throw e; }
@@ -168,9 +182,9 @@ export function createPredictions({ root = PRIVATE, provider, now = Date.now } =
   }
   async function generate(id, competition) {
     const state = await load(competition);
-    if (!state.available) return state;
+    if (!state.available) return {...state,hosting:hosted?"cloud":"local"};
     const m = state.model;
-    const unavailableFor = (reason) => ({ ...unavailable(reason), ...details(m), matchId: id });
+    const unavailableFor = (reason) => ({ ...unavailable(reason), ...details(m), matchId: id, hosting:hosted?"cloud":"local" });
     const response = await provider.get(`/matches/${id}`, 60_000, (raw) => raw);
     if (response.meta.stale || now() - Date.parse(response.meta.fetchedAt) >= 60_000) return unavailableFor("FIXTURE_DATA_STALE");
     const f = response.data;
@@ -192,6 +206,14 @@ export function createPredictions({ root = PRIVATE, provider, now = Date.now } =
     if (now() >= Date.parse(f.utcDate)) return unavailableFor("MATCH_STARTED");
     if (now() >= Date.parse(m.expiresAt)) return unavailableFor("DATA_STALE");
     try {
+      if(store?.configured){
+        const saved=await store.saveForecast(forecast);
+        if(saved===null)return unavailableFor(Date.parse(m.expiresAt)<=Date.parse(f.utcDate)?"DATA_STALE":"MATCH_STARTED");
+        require(validForecast(saved,id)&&saved.forecastId===forecastId&&saved.modelVersion===m.modelVersion&&saved.competition===competition);
+        if(now()>=Date.parse(f.utcDate))return unavailableFor("MATCH_STARTED");
+        if(now()>=Date.parse(m.expiresAt))return unavailableFor("DATA_STALE");
+        return {available:true,...saved,hosting:"cloud"};
+      }
       await privateDir(folder);
       try { await writeFile(path, encode(forecast), { flag: "wx", mode: 0o600 }); }
       catch (error) { if (error.code !== "EEXIST") throw error; }
