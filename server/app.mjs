@@ -4,6 +4,7 @@ import { resolve, relative, extname, sep } from "node:path";
 import { competitions } from "../shared/competitions.js";
 import { createPredictions } from "./predictions.mjs";
 import { createNews, newsTopics } from "./news.mjs";
+import { createMatchInsights } from "./match-insights.mjs";
 import {
   ApiError,
   createProvider,
@@ -58,10 +59,13 @@ export function createApp({
   modelRoot,
   guardianKey = process.env.GUARDIAN_API_KEY,
   newsFetchImpl,
+  lineupKey = process.env.API_FOOTBALL_KEY,
+  lineupFetchImpl,
 } = {}) {
   const provider = createProvider({ key, baseUrl, fetchImpl, now, maxCalls });
   const predictions = createPredictions({ root: modelRoot, provider, now });
   const news = createNews({key:guardianKey,fetchImpl:newsFetchImpl,now});
+  const insights = createMatchInsights({provider,lineupKey,lineupFetchImpl,now,secrets:[key,guardianKey,lineupKey]});
   async function api(url) {
     const params = url.searchParams;
     if (url.pathname === "/api/config" || url.pathname === "/api/health") {
@@ -72,10 +76,14 @@ export function createApp({
         predictionsApiVersion: 2,
         predictionCompetitions: ["PL","CL"],
         news: news.status(),
+        matchInsightsVersion:1,
+        lineupSourceConfigured:insights.lineupConfigured,
         scoresMayBeDelayed: true,
         competitions,
       };
     }
+    const insightMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})\/(head-to-head|lineups)$/);
+    if(insightMatch){onlyParams(params,insightMatch[2]==="lineups"?["view"]:[]);const view=params.get("view")||"reported";if(!["reported","possible"].includes(view))throw badInput("Choose reported or possible lineups.");return insightMatch[2]==="head-to-head"?insights.headToHead(Number(insightMatch[1])):insights.lineups(Number(insightMatch[1]),view==="possible");}
     if(url.pathname==="/api/news/status") {onlyParams(params,[]);return news.status();}
     if(url.pathname==="/api/news") {
       onlyParams(params,["competition","teamId","topic"]);

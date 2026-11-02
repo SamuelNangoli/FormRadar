@@ -15,4 +15,8 @@ export function loadServerEnv(files = [
         throw new Error("Could not load a FormRadar .env file. Check its format.");
     }
   }
+  if(process.env.API_FOOTBALL_KEY===undefined){
+    const alias=Object.keys(process.env).find(name=>name.toUpperCase()==="API_FOOTBALL_KEY");
+    if(alias)process.env.API_FOOTBALL_KEY=process.env[alias];
+  }
 }

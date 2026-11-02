@@ -2,6 +2,8 @@
 
 Updated 2 November 2026. Guardian news is connected locally. Authentication and player-data integration below are a roadmap, not completed features.
 
+Starting-lineup display and labelled recent-XI references have since been implemented; see [match information and heat map setup](match-insights.md). The connected API-Football Free plan excludes the current season, so current lineups show a coverage message. Player profiles, structured injuries and player-form metrics remain future work.
+
 ## News Radar
 
 Set `GUARDIAN_API_KEY` in the existing parent `FormRadar/.env` or the app `.env`, then restart the server. Host > app `.env` > parent `.env` precedence is unchanged. The key stays on the backend and is removed from offline training environments. The fixed Guardian HTTPS request carries its API key; request URLs, credentials and upstream error bodies are never logged or returned to the browser.

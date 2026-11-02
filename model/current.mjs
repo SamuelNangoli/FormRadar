@@ -68,7 +68,7 @@ async function main() {
   // Check all local prerequisites before spending a provider request.
   const python = join(VENV, "bin/python3");
   const env = { ...process.env, PYTHONDONTWRITEBYTECODE: "1", OPENBLAS_NUM_THREADS: "1", OMP_NUM_THREADS: "1" };
-  for (const k of Object.keys(env)) if (/^(FOOTBALL_DATA_|GUARDIAN_API_KEY$)/.test(k)) delete env[k];
+  for (const k of Object.keys(env)) if (/^(FOOTBALL_DATA_|GUARDIAN_API_KEY$|API_FOOTBALL_KEY$)/i.test(k)) delete env[k];
   const probe = spawnSync(python, ["-c", "import numpy,scipy"], { env, stdio: "pipe" });
   if (probe.status !== 0) fail("Run npm run model:setup first.");
   const pointer = (await readFile(join(PRIVATE, "LATEST_REFIT"), "utf8")).trim();

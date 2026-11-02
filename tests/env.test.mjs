@@ -7,22 +7,25 @@ import { loadServerEnv } from "../server/env.mjs";
 
 test("server loads existing parent .env with host and application precedence", async () => {
   const root = await mkdtemp(join(tmpdir(), "formradar-env-"));
-  const names = ["FOOTBALL_DATA_API_KEY", "FOOTBALL_DATA_BASE_URL", "GUARDIAN_API_KEY", "FORMRADAR_ENV_TEST"];
+  const names = ["FOOTBALL_DATA_API_KEY", "FOOTBALL_DATA_BASE_URL", "GUARDIAN_API_KEY", "API_FOOTBALL_KEY", "API_fOOTBALL_KEY", "FORMRADAR_ENV_TEST"];
   const original = names.map((name) => process.env[name]);
   try {
     names.forEach((name) => delete process.env[name]);
     const appFile = join(root, "app.env");
     const parentFile = join(root, "parent.env");
     await writeFile(appFile, 'FORMRADAR_ENV_TEST=app\n');
-    await writeFile(parentFile, 'FOOTBALL_DATA_API_KEY="parent-test-token"\nFOOTBALL_DATA_BASE_URL=https://api.football-data.org/v4\nGUARDIAN_API_KEY="parent-guardian-test-token"\nFORMRADAR_ENV_TEST=parent\n');
+    await writeFile(parentFile, 'FOOTBALL_DATA_API_KEY="parent-test-token"\nFOOTBALL_DATA_BASE_URL=https://api.football-data.org/v4\nGUARDIAN_API_KEY="parent-guardian-test-token"\nAPI_fOOTBALL_KEY="parent-lineup-test-token"\nFORMRADAR_ENV_TEST=parent\n');
     loadServerEnv([join(root, "missing.env"), appFile, parentFile]);
     assert.equal(process.env.FOOTBALL_DATA_API_KEY, "parent-test-token");
     assert.equal(process.env.FOOTBALL_DATA_BASE_URL, "https://api.football-data.org/v4");
     assert.equal(process.env.FORMRADAR_ENV_TEST, "app");
     assert.equal(process.env.GUARDIAN_API_KEY, "parent-guardian-test-token");
+    assert.equal(process.env.API_FOOTBALL_KEY, "parent-lineup-test-token");
+    process.env.API_FOOTBALL_KEY = "host-lineup-test-token";
     process.env.FOOTBALL_DATA_API_KEY = "host-test-token";
     loadServerEnv([parentFile]);
     assert.equal(process.env.FOOTBALL_DATA_API_KEY, "host-test-token");
+    assert.equal(process.env.API_FOOTBALL_KEY, "host-lineup-test-token");
   } finally {
     names.forEach((name, i) => {
       if (original[i] === undefined) delete process.env[name];

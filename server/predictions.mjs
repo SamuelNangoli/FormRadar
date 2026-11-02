@@ -35,7 +35,24 @@ const validForecast = (f, id) => f.matchId === id && hex(f.forecastId,64) && hex
   && hex(f.datasetVersion,64) && hex(f.snapshotVersion,64) && stamp(f.generatedAt) && stamp(f.kickoffAt)
   && Date.parse(f.generatedAt) < Date.parse(f.kickoffAt) && f.mode === "experimental" && f.retrospective === false
   && [f.probabilities?.home,f.probabilities?.draw,f.probabilities?.away].every((p) => Number.isFinite(p) && p >= 0 && p <= 1)
-  && Math.abs(f.probabilities.home + f.probabilities.draw + f.probabilities.away - 1) < 1e-9;
+  && Math.abs(f.probabilities.home + f.probabilities.draw + f.probabilities.away - 1) < 1e-9
+  && (f.forecastSchema !== 2 || validScoreline(f.scoreline));
+
+function validScoreline(s) {
+  return s?.method === "independent-poisson" && s.calibrationApplied === false
+    && [s.expectedGoals?.home,s.expectedGoals?.away].every(v=>Number.isFinite(v)&&v>0&&v<=50)
+    && JSON.stringify(s.labels)==='[0,1,2,3,4,5,"6+"]'
+    && Array.isArray(s.matrix) && s.matrix.length===7 && s.matrix.every(r=>Array.isArray(r)&&r.length===7&&r.every(v=>Number.isFinite(v)&&v>=0&&v<=1))
+    && Math.abs(s.matrix.flat().reduce((a,b)=>a+b,0)-1)<1e-9;
+}
+
+export function scorelineMap(homeRate,awayRate) {
+  require([homeRate,awayRate].every(v=>Number.isFinite(v)&&v>0&&v<=50));
+  const mass=(rate)=>{const values=[Math.exp(-rate)];for(let k=1;k<6;k++)values.push(values[k-1]*rate/k);values.push(Math.max(0,1-values.reduce((a,b)=>a+b,0)));return values;};
+  const h=mass(homeRate),a=mass(awayRate);
+  return {method:"independent-poisson",calibrationApplied:false,expectedGoals:{home:homeRate,away:awayRate},
+    labels:[0,1,2,3,4,5,"6+"],matrix:h.map(x=>a.map(y=>x*y))};
+}
 
 export function validateModel(m) {
   const scope = MODEL_SCOPES[m?.competition];
@@ -100,7 +117,7 @@ export function infer(parameters, homeId, awayId) {
   const lh = Math.exp(parameters.intercept + parameters.homeAdvantage + effect("attack", h) + effect("defenceWeakness", a));
   const la = Math.exp(parameters.intercept + effect("attack", a) + effect("defenceWeakness", h));
   const [home, draw, away] = goalProbabilities(lh, la, parameters.temperature);
-  return { probabilities: { home, draw, away }, usesPooledPrior: h < 0 || a < 0 };
+  return { probabilities: { home, draw, away }, usesPooledPrior: h < 0 || a < 0, scoreline:scorelineMap(lh,la) };
 }
 
 const details = (m) => ({ mode: "experimental", competition:m.competition, modelVersion: m.modelVersion, datasetVersion: m.datasetVersion,
@@ -165,7 +182,7 @@ export function createPredictions({ root = PRIVATE, provider, now = Date.now } =
       || f.homeTeam?.id === f.awayTeam?.id || ![f.homeTeam?.id, f.awayTeam?.id].every((t) => m.currentTeamIds.includes(t))
       || Date.parse(f.utcDate) < Date.parse(m.parameters.trainingCutoff)) return unavailableFor("FIXTURE_NOT_CONFIRMED");
     if (Date.parse(f.utcDate) - now() > 7*DAY) return unavailableFor("OUTSIDE_HORIZON");
-    const basis = { matchId: id, kickoffAt: f.utcDate, homeTeamId: f.homeTeam.id, awayTeamId: f.awayTeam.id, modelVersion: m.modelVersion, snapshotVersion: m.snapshotVersion };
+    const basis = { forecastSchema:2, matchId: id, kickoffAt: f.utcDate, homeTeamId: f.homeTeam.id, awayTeamId: f.awayTeam.id, modelVersion: m.modelVersion, snapshotVersion: m.snapshotVersion };
     const forecastId = digest(JSON.stringify(basis));
     const folder = join(root,"forecasts",String(id)), path = join(folder,`${forecastId}.json`);
     const forecast = { ...basis, forecastId, provider: "football-data.org", competition, ...details(m),

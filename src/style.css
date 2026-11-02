@@ -1,5 +1,5 @@
 :root {
-  font-family: "DM Sans", sans-serif;
+  font-family: "Inter", sans-serif;
   color: #edf3fa;
   background: #090e19;
   font-synthesis: none;
@@ -61,7 +61,7 @@ select:focus-visible {
   border-radius: 12px;
 }
 .brand-copy strong {
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
   font-size: 21px;
   letter-spacing: -1px;
 }
@@ -306,7 +306,7 @@ select:focus-visible {
   background: #45daa0;
 }
 .page-head h1 {
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
   font-size: 30px;
   letter-spacing: -1.2px;
   margin: 9px 0 7px;
@@ -367,7 +367,7 @@ select:focus-visible {
   box-shadow: 0 0 0 4px #2c715a;
 }
 .hero h2 {
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
   font-size: 35px;
   line-height: 1.16;
   letter-spacing: -1.5px;
@@ -462,7 +462,7 @@ select:focus-visible {
   color: #45dca3;
 }
 .stat-card strong {
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
   font-size: 25px;
   display: block;
   margin: 11px 0 5px;
@@ -479,7 +479,7 @@ select:focus-visible {
   margin: 29px 0 16px;
 }
 .section-row h2 {
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
   font-size: 18px;
   margin: 0 0 5px;
 }
@@ -595,7 +595,7 @@ select:focus-visible {
   flex-shrink: 0;
   border-radius: 50%;
   border: 1px solid;
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
   font-weight: 800;
   letter-spacing: -0.7px;
 }
@@ -604,13 +604,13 @@ select:focus-visible {
   text-align: center;
   font-size: 15px;
   font-weight: 800;
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
 }
 .match-time small {
   display: block;
   color: #71849b;
   font-size: 9px;
-  font-family: "DM Sans";
+  font-family: "Inter";
   font-weight: 500;
   margin-top: 4px;
 }
@@ -748,7 +748,7 @@ select:focus-visible {
   gap: 5px;
 }
 .prob-numbers strong {
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
   font-size: 27px;
 }
 .green {
@@ -1030,7 +1030,7 @@ select:focus-visible {
 }
 .empty-news h3,
 .news-note h3 {
-  font-family: "Space Grotesk";
+  font-family: "Poppins";
 }
 .empty-news p,
 .news-note p {
@@ -1309,7 +1309,7 @@ button:disabled {
   margin-bottom: 24px;
 }
 .setup-panel h2 {
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 29px;
   letter-spacing: -0.8px;
 }
@@ -1617,7 +1617,7 @@ button:disabled {
 .team-stat-grid b {
   display: block;
   color: #e3f2ec;
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 19px;
   margin-top: 7px;
 }
@@ -1659,7 +1659,7 @@ button:disabled {
 .league-symbol {
   display: inline-grid;
   place-items: center;
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Poppins", sans-serif;
   width: 45px;
   height: 45px;
   border-radius: 10px;
@@ -1899,3 +1899,48 @@ footer a {
     top: 6px;
   }
 }
+
+.prob-numbers strong, .stat-top + strong, .model-details, .score, .match-time { font-family: "Inter", sans-serif; font-variant-numeric: tabular-nums; }
+.match-insights { margin-top: 18px; }
+.insight-tabs, .lineup-view { display:flex; gap:8px; flex-wrap:wrap; padding:16px 18px; }
+.insight-tabs { border-bottom:1px solid #263447; }
+.insight-tabs button, .lineup-view button { display:flex; align-items:center; gap:7px; padding:9px 12px; font-size:11px; color:#9db0c7; background:#101a28; border:1px solid #304259; border-radius:7px; }
+.insight-tabs button.active, .lineup-view button.active { color:#62e2b5; border-color:#34785e; background:#173d31; }
+.insight-empty { display:flex; gap:12px; padding:24px; color:#a0b2c8; font-size:12px; line-height:1.8; }
+.insight-empty > svg { flex-shrink:0; color:#4adba8; margin-top:3px; }
+.insight-empty p { margin-top:0; }
+.match-insights .source-note, .scoreline-map .source-note { padding:16px 20px; font-size:11px; line-height:1.7; }
+.h2h-totals { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:20px; }
+.h2h-totals > div { background:#111e2d; border:1px solid #26374a; border-radius:9px; padding:13px 6px; text-align:center; }
+.h2h-totals strong { display:block; font-size:25px; color:#4adca3; font-variant-numeric:tabular-nums; }
+.h2h-totals span { display:block; color:#91a7bf; font-size:10px; margin-top:7px; overflow-wrap:anywhere; }
+.h2h-list { max-height:410px; overflow-y:auto; }
+.h2h-row { padding:13px 20px; border-top:1px solid #263447; }
+.h2h-row > small { display:block; font-size:10px; color:#8197af; margin-bottom:8px; }
+.h2h-row > div { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; font-size:12px; }
+.h2h-row > div > span:last-child { text-align:right; }
+.h2h-row b { font-variant-numeric:tabular-nums; color:#e6f4ee; }
+.lineup-columns { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; padding:0 18px 18px; }
+.team-lineup { border:1px solid #2b3d51; border-radius:9px; overflow:hidden; }
+.lineup-team { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:14px; font-size:12px; background:#122334; }
+.lineup-team > span { margin-left:auto; color:#96afc8; font-size:11px; }
+.lineup-kind { padding:10px 14px; font-size:10px; color:#59dfae; }
+.lineup-kind.reference { color:#e4bd78; }
+.lineup-coach { font-size:11px; padding:0 14px; color:#91a9c1; }
+.players-list { list-style:none; padding:0; margin:0; }
+.players-list li { display:grid; grid-template-columns:26px 1fr; gap:7px 10px; padding:10px 14px; border-top:1px solid #243548; font-size:12px; }
+.shirt-number { width:25px; height:25px; display:grid; place-items:center; border-radius:6px; color:#6de4b7; background:#1a4036; grid-row:span 2; font-size:11px; font-variant-numeric:tabular-nums; }
+.players-list small { color:#809ab3; font-size:10px; }
+.lineup-bench summary { padding:12px 14px; font-size:11px; color:#99b1c8; cursor:pointer; }
+.scoreline-intro { padding:18px 20px 8px; font-size:12px; color:#95aac1; line-height:1.7; }
+.scoreline-intro p { margin-top:0; }
+.scoreline-intro span { font-size:11px; }
+.heatmap-axis { color:#9bb2ca; font-size:10px; text-align:center; padding:10px; }
+.heatmap-table { width:100%; border-collapse:separate; border-spacing:4px; padding:0 12px; table-layout:fixed; }
+.heatmap-table th { font-size:10px; color:#8fa8c1; padding:5px 0; text-align:center; }
+.heatmap-table td { padding:0; border:0; }
+.heatmap-table button { width:100%; min-height:38px; border:1px solid transparent; border-radius:5px; padding:5px 0; font-size:10px; font-weight:600; font-variant-numeric:tabular-nums; }
+.heatmap-table button[aria-pressed="true"] { border-color:#dcfff0; box-shadow:0 0 0 1px #58dfac; }
+.heatmap-table button small { font-size:8px; opacity:.7; }
+.heatmap-selection { padding:4px 20px 0; color:#9db1c9; font-size:12px; }
+.heatmap-selection strong { color:#69e7b9; }

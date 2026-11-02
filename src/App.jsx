@@ -26,6 +26,7 @@ import { competitions } from "../shared/competitions.js";
 import { useResource } from "./api.js";
 import { demoMatches, demoStandings } from "./demo.js";
 import NewsRadar from "./NewsRadar.jsx";
+import MatchInsights from "./MatchInsights.jsx";
 import { isoDay, isLive, dayLabel } from "./format.js";
 import {
   Logo,
@@ -868,6 +869,7 @@ export default function App() {
                                 </p>
                               </div>
                             )}
+                            {selected&&<MatchInsights key={`${selected.id}-${demo}`} match={selected} demo={demo} refresh={refresh} backendCurrent={config.data?.matchInsightsVersion===1}/>}
                           </div>
                         </div>
                         {selected && (

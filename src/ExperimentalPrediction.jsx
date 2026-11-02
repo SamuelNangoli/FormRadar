@@ -3,6 +3,7 @@ import { Target, Info } from "lucide-react";
 import { useResource } from "./api.js";
 import { Versus, Loading, ErrorNotice } from "./components.jsx";
 import { displayPercentages } from "./probability.js";
+import ScorelineHeatmap from "./ScorelineHeatmap.jsx";
 
 const date = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
 
@@ -71,6 +72,8 @@ export default function ExperimentalPrediction({ match, refresh, backendCurrent 
         {evaluation.data && !evaluation.data.available && <p>{evaluation.data.message}</p>}
       </div>}
     </section>
+    {valid && data.scoreline && <ScorelineHeatmap key={data.forecastId} scoreline={data.scoreline} match={match}/>}
+    {valid&&!data.scoreline&&<section className="panel"><p className="source-note">Restart FormRadar and reload this page to enable the scoreline heat map. Saved forecasts are preserved.</p></section>}
     <section className="panel model-history">
       <div className="panel-title"><span>Saved pre-match forecasts</span><span className="subtle">{saved.length} {saved.length === 1 ? "revision" : "revisions"}</span></div>
       {history.loading && <Loading label="Loading saved forecasts…" />}
@@ -80,7 +83,7 @@ export default function ExperimentalPrediction({ match, refresh, backendCurrent 
         const p = displayPercentages(f.probabilities);
         return <tr key={f.forecastId}><td>{date(f.generatedAt)}</td>{p.map((v,i) => <td key={i}>{v}%</td>)}<td title={f.modelVersion}>{f.modelVersion.slice(0,8)}</td></tr>;
       })}</tbody></table></div>}
-      <p className="source-note">Real saved revisions only. Reopening the same fixture and model reuses its original forecast. A refreshed model or changed kickoff creates a new revision.</p>
+      <p className="source-note">Real saved revisions only. Reopening the same fixture, model and forecast format reuses its original record. Updated models, changed kickoffs or a new forecast format create a revision.</p>
     </section>
   </>;
 }
