@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, writeFile, readFile, readdir, rm } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { createPredictions, goalProbabilities, infer } from "../server/predictions.mjs";
+import { createPredictions, goalProbabilities, infer, validateModel } from "../server/predictions.mjs";
 import { createApp, listen } from "../server/app.mjs";
 import { createProvider } from "../server/data.mjs";
 import { digest } from "../model/dataset.mjs";
@@ -31,6 +31,32 @@ async function isolated(run) {
   try { await run(root); } finally { await rm(root,{recursive:true,force:true}); }
 }
 const providerFor = (fixture=match()) => ({get:async()=>({data:fixture,meta:{stale:false,fetchedAt:new Date(NOW).toISOString()}})});
+
+test("Python artifact timestamps pass registry validation without weakening date or expiry checks", async()=>isolated(async(root)=>{
+  const env={...process.env,PYTHONDONTWRITEBYTECODE:"1",OPENBLAS_NUM_THREADS:"1"};
+  for(const key of Object.keys(env)) if(/^FOOTBALL_DATA_/.test(key)) delete env[key];
+  const code="import json,sys;sys.path.insert(0,'model');import train;from datetime import datetime,timezone;from unittest.mock import patch;d=json.load(sys.stdin);dataset={'version':d['datasetVersion'],'manifest':{'sources':[{'fetchedAt':d['dataAsOf']}]}};fixed=datetime(2026,11,2,10,1,0,907744,tzinfo=timezone.utc);clock=type('Clock',(),{'now':staticmethod(lambda tz:fixed)});\nwith patch.object(train,'datetime',clock):\n exported=train.artifact(d['parameters'],dataset,'experimental-current-season');d.update(exported)\nprint(json.dumps(d))";
+  const result=spawnSync(join(VENV,"bin/python3"),["-c",code],{cwd:PROJECT,input:JSON.stringify(syntheticModel()),encoding:"utf8",env});
+  assert.equal(result.status,0,result.stderr);
+  const model=JSON.parse(result.stdout);
+  assert.equal(model.trainedAt,"2026-11-02T10:01:00.907744Z");
+  assert.equal(validateModel(model),model);
+  await register(root,model);
+  const service=createPredictions({root,now:()=>NOW,provider:providerFor()});
+  const estimate=await service.predict(500);
+  assert.equal(estimate.available,true);
+  assert.equal(estimate.trainedAt,model.trainedAt,"preserve original precision in provenance");
+  assert.equal((await service.history(500)).forecasts.length,1);
+  for(const precision of ["",".9",".90",".907",".9077",".90774",".907744"]) {
+    const candidate={...model,trainedAt:`2026-11-02T10:01:00${precision}Z`};
+    assert.equal(validateModel(candidate),candidate);
+  }
+  for(const value of ["2026-02-30T10:01:00.907744Z","2026-11-02T25:01:00.907744Z","2026-11-02T10:01:00.9077441Z","2026-11-02T10:01:00.Z","2026-11-02T10:01:00.907744+00:00"]) {
+    assert.throws(()=>validateModel({...model,trainedAt:value}));
+  }
+  const expired=createPredictions({root,now:()=>Date.parse(model.expiresAt),provider:{get:()=>assert.fail("Expired model must not fetch fixtures")}});
+  assert.equal((await expired.predict(500)).reason,"DATA_STALE");
+}));
 
 test("current-season validation requires full membership and genuine completed targets before today", () => {
   const matches=[];

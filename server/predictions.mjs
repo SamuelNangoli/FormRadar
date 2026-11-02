@@ -5,8 +5,14 @@ import { digest, encode, privateDir } from "../model/dataset.mjs";
 
 const DAY = 86_400_000;
 const require = (ok) => { if (!ok) throw new Error("Invalid experimental model"); };
-const stamp = (v) => typeof v === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(v)
-  && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().replace(".000Z", "Z") === v.replace(".000Z", "Z");
+const stamp = (v) => {
+  const parts = typeof v === "string" && /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,6}))?Z$/.exec(v);
+  if (!parts || !Number.isFinite(Date.parse(v))) return false;
+  // Python exports microseconds; JavaScript compares dates at millisecond precision.
+  // Keep the original value, and still reject calendar rollover such as February 30.
+  const milliseconds = (parts[2] || "").padEnd(3, "0").slice(0, 3);
+  return new Date(v).toISOString() === `${parts[1]}.${milliseconds}Z`;
+};
 const hex = (v, n) => new RegExp(`^[a-f0-9]{${n}}$`).test(v);
 export const reasons = {
   MODEL_NOT_READY: "Prepare the current-season model on this computer first.",
