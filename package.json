@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:cl": "node model/champions.mjs && node scripts/dev.mjs",
     "build": "vite build",
     "start": "node server/index.mjs",
     "preview": "node server/index.mjs",
@@ -19,6 +20,7 @@
     "model:inspect": "node model/run.mjs inspect",
     "model:refit": "node model/run.mjs refit",
     "model:prepare-current": "node model/current.mjs",
+    "model:prepare-cl": "node model/champions.mjs",
     "model:test": "node model/run.mjs test"
   },
   "dependencies": {

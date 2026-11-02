@@ -65,18 +65,21 @@ export function createApp({
         configured: provider.configured,
         provider: "football-data.org",
         predictions: "experimental",
+        predictionsApiVersion: 2,
+        predictionCompetitions: ["PL","CL"],
         scoresMayBeDelayed: true,
         competitions,
       };
     }
     if (url.pathname === "/api/model/status" || url.pathname === "/api/model/evaluation") {
-      onlyParams(params, []);
-      return url.pathname.endsWith("/evaluation") ? predictions.evaluation() : predictions.status();
+      onlyParams(params, ["competition"]);
+      const code = competition(params);
+      return url.pathname.endsWith("/evaluation") ? predictions.evaluation(code) : predictions.status(code);
     }
     const predictionMatch = url.pathname.match(/^\/api\/predictions\/([1-9]\d{0,6})(\/history)?$/);
     if (predictionMatch) {
-      onlyParams(params, []);
-      return predictionMatch[2] ? predictions.history(Number(predictionMatch[1])) : predictions.predict(Number(predictionMatch[1]));
+      onlyParams(params, predictionMatch[2] ? [] : ["competition"]);
+      return predictionMatch[2] ? predictions.history(Number(predictionMatch[1])) : predictions.predict(Number(predictionMatch[1]),competition(params));
     }
     if (["/api/matches", "/api/fixtures", "/api/results"].includes(url.pathname)) {
       onlyParams(params, ["competition", "dateFrom", "dateTo"]);
@@ -95,7 +98,7 @@ export function createApp({
         (Date.parse(to) - Date.parse(from)) / DAY > 30
       )
         throw badInput("Use valid dates in order, covering at most 31 days.");
-      // The UI end date is inclusive; football-data.org dateTo is exclusive.
+      // Request a covering range, then enforce the UI's inclusive dates locally.
       const query = new URLSearchParams({
         dateFrom: from,
         dateTo: dateShift(to, 1),
@@ -124,7 +127,8 @@ export function createApp({
             dateFrom: from,
             dateTo: to,
             matches: raw.matches
-              .filter((m) => !statuses || statuses.includes(m.status))
+              .filter((m) => m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to
+                && (!statuses || statuses.includes(m.status)))
               .map((m) =>
                 matchView({
                   ...m,

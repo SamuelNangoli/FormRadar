@@ -181,6 +181,25 @@ The model view shows probabilities, results cutoff, data retrieval time, trainin
 
 If preparation fails, keep the error message and retry after fixing the provider/input issue. The previous pointer remains intact but stops serving at its own expiry. Never edit results or relax checks to force a model ready. Keep private model/data files out of source archives.
 
+## 10. Champions League league-phase model
+
+Run from the same nested app folder:
+
+```bash
+npm run model:prepare-cl
+npm run dev
+```
+
+Stop an existing development server with Ctrl+C before starting another. In the website select **Predictions → Champions League → Tomorrow → Experimental model**. The calendar/provider pill in the header has been removed. If the page says an update is ready, restart the terminal server and reload the browser; preparing the model again does not reload old running code.
+
+CL is a separate experiment; no PL parameters or default probabilities fill gaps. The first CL command imports and checks the complete 2023/24 group phase (96 results), 2024/25 league phase (144), and 2025/26 league phase (144). It selects Poisson settings on 2024/25, locks them, refits 2023/24+2024/25 and evaluates the untouched 2025/26 phase against a frequency baseline. Both held-out comparisons must improve before an experimental CL artifact is published. Knockout/qualifying results and extra-time/shootout totals are outside this model’s target scope. Modern phase coverage checks all 144 fixtures, 36 clubs, eight distinct opponents, four home/four away allocations and eight matchdays. Historical groups use the appropriate 32-club/96-match checks.
+
+The latest current-season snapshot adds only finished results from prior UTC dates, preserves the held-out report, and refits with its existing settings. Historical responses are cached, current responses are reused for up to one hour within the same UTC day, and new requests are spaced by at least 8.5 seconds. Failures stop without synthetic replacements or repeated retries. All CL data and models live under ignored `.formradar-model/champions-league/`. PL pointers and artifacts are preserved; forecast records remain private and store their competition/model identity.
+
+Run **`npm run model:prepare-cl` each UTC day**, starting at **03:00 Uganda time**. This refresh is manual. On **Tuesday 3 November 2026**, refresh before the evening matches; the 2 November model expires at 03:00 on 3 November. Stop the running server, prepare CL, then start it again, or use a second terminal in the same app folder and press Refresh data afterward. No installed scheduler or page-view training is claimed.
+
+This baseline uses CL group/league-phase score history only. It has a small 144-match retrospective test, a format change between training and validation, transferred calibration, pooled priors for unfamiliar clubs, and no domestic form, lineup/injury input, live estimates or performance guarantee. See [the dated model progress report](model-status.md).
+
 ## Verification
 
 The project environment uses Python 3.14.4, NumPy 2.5.4 and SciPy 1.18.1. Current checks cover importer/source checksums, chronological fitting, Node/Python prediction parity, current-season validation, model freshness and corruption, fixture eligibility, forecast persistence/revisions, route validation and credential isolation. Tests use synthetic fixtures in temporary folders; they do not fetch football data or activate the user's model. See the delivery report for the latest counts and build result.

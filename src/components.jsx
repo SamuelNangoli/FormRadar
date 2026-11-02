@@ -340,14 +340,14 @@ export function TeamComparison({ match, demo, refresh }) {
   );
 }
 
-export function Prediction({ match, demo, refresh }) {
+export function Prediction({ match, demo, refresh, backendCurrent }) {
   const [view, setView] = useState("model");
   return <>
     {!demo && <div className="fixture-tabs prediction-modes" aria-label="Prediction mode">
       <button className={view === "model" ? "active" : ""} aria-pressed={view === "model"} onClick={() => setView("model")}>Experimental model</button>
       <button className={view === "demo" ? "active" : ""} aria-pressed={view === "demo"} onClick={() => setView("demo")}>Demo examples</button>
     </div>}
-    {demo || view === "demo" ? <DemoPrediction match={match} /> : <Suspense fallback={<Loading label="Loading model view…" />}><ExperimentalPrediction match={match} refresh={refresh} /></Suspense>}
+    {demo || view === "demo" ? <DemoPrediction match={match} /> : <Suspense fallback={<Loading label="Loading model view…" />}><ExperimentalPrediction match={match} refresh={refresh} backendCurrent={backendCurrent} /></Suspense>}
   </>;
 }
 

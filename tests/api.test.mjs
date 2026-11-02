@@ -31,6 +31,7 @@ test("API reuses validated crest/emblem metadata in fixtures, standings and conf
   let calls = 0;
   await withServer({
     key: TOKEN,
+    now: () => Date.parse("2026-11-01T12:00:00Z"),
     fetchImpl: async (url) => {
       calls++;
       return ok(new URL(url).pathname.endsWith("/standings")
@@ -188,8 +189,8 @@ test("dedicated fixtures/results default to PL, use status filters, sort and cac
         matches: [
           match({ id: 1, competition: undefined }),
           match({ id: 2, utcDate: "2026-11-02T10:00:00Z" }),
-          match({ id: 3, status: "TIMED", score: {} }),
-          match({ id: 4, status: "SCHEDULED", utcDate: "2026-11-01T12:00:00Z", score: {} }),
+          match({ id: 3, status: "TIMED", utcDate: "2026-11-03T20:00:00Z", score: {} }),
+          match({ id: 4, status: "SCHEDULED", utcDate: "2026-11-02T12:00:00Z", score: {} }),
           match({ id: 5, status: "POSTPONED" }),
           match({ id: 6, status: "IN_PLAY" }),
           match({ id: 7, status: "CANCELLED" }),

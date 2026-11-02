@@ -4,6 +4,10 @@ import { PRIVATE } from "../model/paths.mjs";
 import { digest, encode, privateDir } from "../model/dataset.mjs";
 
 const DAY = 86_400_000;
+const MODEL_SCOPES = {
+  PL: { historicalMatches:1140, testMatches:380, clubs:20, maxCurrent:380 },
+  CL: { historicalMatches:384, testMatches:144, clubs:36, maxCurrent:144 },
+};
 const require = (ok) => { if (!ok) throw new Error("Invalid experimental model"); };
 const stamp = (v) => {
   const parts = typeof v === "string" && /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,6}))?Z$/.exec(v);
@@ -16,9 +20,10 @@ const stamp = (v) => {
 const hex = (v, n) => new RegExp(`^[a-f0-9]{${n}}$`).test(v);
 export const reasons = {
   MODEL_NOT_READY: "Prepare the current-season model on this computer first.",
-  MODEL_INVALID: "The saved experimental model could not be validated. Prepare it again.",
+  MODEL_INVALID: "The saved experimental model could not be validated. Restart FormRadar with the latest code before preparing this competition again.",
   DATA_STALE: "Model data needs updating. Refresh the current-season model, then retry.",
-  UNSUPPORTED_COMPETITION: "Experimental estimates currently support the Premier League only.",
+  UNSUPPORTED_COMPETITION: "Experimental estimates support the Premier League and Champions League league phase.",
+  UNSUPPORTED_STAGE: "The Champions League model supports league-phase matches. Knockout and qualifying estimates are not evaluated yet.",
   FIXTURE_NOT_CONFIRMED: "A confirmed kickoff and current-season teams are required.",
   MATCH_STARTED: "New pre-match estimates stop at kickoff. Saved forecasts remain in history.",
   FIXTURE_DATA_STALE: "A fresh fixture check is needed before generating an estimate.",
@@ -33,8 +38,9 @@ const validForecast = (f, id) => f.matchId === id && hex(f.forecastId,64) && hex
   && Math.abs(f.probabilities.home + f.probabilities.draw + f.probabilities.away - 1) < 1e-9;
 
 export function validateModel(m) {
+  const scope = MODEL_SCOPES[m?.competition];
   require(m?.schemaVersion === 1 && m.role === "experimental-current-season" && m.experimental === true
-    && m.deployable === false && m.testOnly === false && m.provider === "football-data.org" && m.competition === "PL"
+    && m.deployable === false && m.testOnly === false && m.provider === "football-data.org" && scope
     && m.season === 2026 && hex(m.modelVersion, 32) && hex(m.datasetVersion, 64) && hex(m.snapshotVersion, 64)
     && JSON.stringify(m.outcomeOrder) === '["home","draw","away"]'
     && m.evaluationIsForDifferentFittedArtifact === true && /^evaluation-[A-Za-z0-9-]+$/.test(m.evaluationReference));
@@ -46,7 +52,7 @@ export function validateModel(m) {
     && Date.parse(m.expiresAt) <= Date.parse(m.dataAsOf) + DAY);
   const p = m.parameters;
   require(p?.family === "regularized-independent-poisson" && p.provider === m.provider
-    && Array.isArray(p.teamIds) && p.teamIds.length >= 20 && p.teamIds.length <= 100
+    && Array.isArray(p.teamIds) && p.teamIds.length >= scope.clubs && p.teamIds.length <= 100
     && p.teamIds.every((id) => Number.isSafeInteger(id) && id > 0) && new Set(p.teamIds).size === p.teamIds.length
     && [p.attack, p.defenceWeakness].every((a) => Array.isArray(a) && a.length === p.teamIds.length && a.every((v) => Number.isFinite(v) && Math.abs(v) <= 3))
     && Number.isFinite(p.intercept) && p.intercept >= -3 && p.intercept <= 2
@@ -54,12 +60,13 @@ export function validateModel(m) {
     && Number.isFinite(p.temperature) && p.temperature >= .5 && p.temperature <= 2
     && [1,10].includes(p.alpha) && [null,365].includes(p.halfLifeDays)
     && stamp(p.trainingCutoff) && Date.parse(p.trainingCutoff) <= Date.parse(m.coverageThrough)
-    && Number.isInteger(m.currentSeasonMatches) && m.currentSeasonMatches >= 0 && m.currentSeasonMatches <= 380
-    && p.trainingMatches === 1140 + m.currentSeasonMatches);
-  require(Array.isArray(m.currentTeamIds) && m.currentTeamIds.length === 20
-    && new Set(m.currentTeamIds).size === 20 && m.currentTeamIds.every((id) => Number.isSafeInteger(id) && id > 0));
+    && Number.isInteger(m.currentSeasonMatches) && m.currentSeasonMatches >= 0 && m.currentSeasonMatches <= scope.maxCurrent
+    && p.trainingMatches === scope.historicalMatches + m.currentSeasonMatches);
+  require(Array.isArray(m.currentTeamIds) && m.currentTeamIds.length === scope.clubs
+    && new Set(m.currentTeamIds).size === scope.clubs && m.currentTeamIds.every((id) => Number.isSafeInteger(id) && id > 0));
+  require(m.competition !== "CL" || JSON.stringify(m.supportedStages) === '["LEAGUE_STAGE"]');
   const e = m.evaluation;
-  require(e?.testPoisson?.matches === 380 && e.testFrequencyBaseline?.matches === 380
+  require(e?.testPoisson?.matches === scope.testMatches && e.testFrequencyBaseline?.matches === scope.testMatches
     && [e.testPoisson, e.testFrequencyBaseline].every((v) => Number.isFinite(v.logLoss) && v.logLoss > 0 && Number.isFinite(v.brier) && v.brier >= 0 && v.brier <= 2)
     && e.testPoisson.logLoss < e.testFrequencyBaseline.logLoss && e.testPoisson.brier <= e.testFrequencyBaseline.brier
     && Array.isArray(e.limitations) && e.limitations.every((v) => typeof v === "string"));
@@ -96,34 +103,37 @@ export function infer(parameters, homeId, awayId) {
   return { probabilities: { home, draw, away }, usesPooledPrior: h < 0 || a < 0 };
 }
 
-const details = (m) => ({ mode: "experimental", modelVersion: m.modelVersion, datasetVersion: m.datasetVersion,
+const details = (m) => ({ mode: "experimental", competition:m.competition, modelVersion: m.modelVersion, datasetVersion: m.datasetVersion,
   snapshotVersion: m.snapshotVersion, trainedAt: m.trainedAt, trainingCutoff: m.parameters.trainingCutoff,
   trainingMatches: m.parameters.trainingMatches, currentSeasonMatches: m.currentSeasonMatches,
   dataAsOf: m.dataAsOf, coverageThrough: m.coverageThrough, expiresAt: m.expiresAt,
-  evaluationRef: m.evaluationReference, evaluationUrl: "/api/model/evaluation", evaluationIsForDifferentFittedArtifact: true });
+  evaluationRef: m.evaluationReference, evaluationUrl: `/api/model/evaluation?competition=${m.competition}`, evaluationIsForDifferentFittedArtifact: true });
 
 export function createPredictions({ root = PRIVATE, provider, now = Date.now } = {}) {
   const pending = new Map();
-  async function load() {
+  async function load(competition = "PL") {
+    if (!MODEL_SCOPES[competition]) return unavailable("UNSUPPORTED_COMPETITION");
+    const modelRoot = competition === "CL" ? join(root,"champions-league") : root;
     try {
       let pointer;
-      try { pointer = JSON.parse(await readFile(join(root,"EXPERIMENTAL"),"utf8")); }
+      try { pointer = JSON.parse(await readFile(join(modelRoot,"EXPERIMENTAL"),"utf8")); }
       catch (e) { if (e.code === "ENOENT") return unavailable("MODEL_NOT_READY"); throw e; }
       require(/^experimental-[A-Za-z0-9-]+$/.test(pointer.run) && hex(pointer.sha256,64));
-      const bytes = await readFile(join(root,"runs",pointer.run,"model.json"));
+      const bytes = await readFile(join(modelRoot,"runs",pointer.run,"model.json"));
       require(digest(bytes) === pointer.sha256);
       const model = validateModel(JSON.parse(bytes));
+      require(model.competition === competition);
       const time = now();
       if (time < Date.parse(model.trainedAt) || time >= Date.parse(model.expiresAt)) return { ...unavailable("DATA_STALE"), ...details(model) };
       return { available: true, model };
     } catch { return unavailable("MODEL_INVALID"); }
   }
-  async function status() {
-    const state = await load();
+  async function status(competition = "PL") {
+    const state = await load(competition);
     return state.available ? { available: true, ...details(state.model) } : state;
   }
-  async function evaluation() {
-    const state = await load();
+  async function evaluation(competition = "PL") {
+    const state = await load(competition);
     return state.available ? { available: true, ...details(state.model), retrospective: true, ...state.model.evaluation } : state;
   }
   async function history(id) {
@@ -139,17 +149,18 @@ export function createPredictions({ root = PRIVATE, provider, now = Date.now } =
     }
     return { forecasts: forecasts.sort((a,b) => a.generatedAt.localeCompare(b.generatedAt)) };
   }
-  async function generate(id) {
-    const state = await load();
+  async function generate(id, competition) {
+    const state = await load(competition);
     if (!state.available) return state;
     const m = state.model;
     const unavailableFor = (reason) => ({ ...unavailable(reason), ...details(m), matchId: id });
     const response = await provider.get(`/matches/${id}`, 60_000, (raw) => raw);
     if (response.meta.stale || now() - Date.parse(response.meta.fetchedAt) >= 60_000) return unavailableFor("FIXTURE_DATA_STALE");
     const f = response.data;
-    if (f?.competition?.code !== "PL" || f.competition.id !== 2021) return unavailableFor("UNSUPPORTED_COMPETITION");
+    if (f?.competition?.code !== competition || f.competition.id !== (competition === "CL" ? 2001 : 2021)) return unavailableFor("UNSUPPORTED_COMPETITION");
     if (f.testOnly === true || f.id !== id || !stamp(f.utcDate)) return unavailableFor("FIXTURE_NOT_CONFIRMED");
     if (Date.parse(f.utcDate) <= now() || ["IN_PLAY","PAUSED","FINISHED"].includes(f.status)) return unavailableFor("MATCH_STARTED");
+    if (competition === "CL" && !m.supportedStages.includes(f.stage)) return unavailableFor("UNSUPPORTED_STAGE");
     if (f.status !== "TIMED" || f.season?.startDate?.slice(0,4) !== String(m.season)
       || f.homeTeam?.id === f.awayTeam?.id || ![f.homeTeam?.id, f.awayTeam?.id].every((t) => m.currentTeamIds.includes(t))
       || Date.parse(f.utcDate) < Date.parse(m.parameters.trainingCutoff)) return unavailableFor("FIXTURE_NOT_CONFIRMED");
@@ -157,7 +168,7 @@ export function createPredictions({ root = PRIVATE, provider, now = Date.now } =
     const basis = { matchId: id, kickoffAt: f.utcDate, homeTeamId: f.homeTeam.id, awayTeamId: f.awayTeam.id, modelVersion: m.modelVersion, snapshotVersion: m.snapshotVersion };
     const forecastId = digest(JSON.stringify(basis));
     const folder = join(root,"forecasts",String(id)), path = join(folder,`${forecastId}.json`);
-    const forecast = { ...basis, forecastId, provider: "football-data.org", competition: "PL", ...details(m),
+    const forecast = { ...basis, forecastId, provider: "football-data.org", competition, ...details(m),
       ...infer(m.parameters, f.homeTeam.id, f.awayTeam.id), generatedAt: new Date(now()).toISOString(),
       fixtureCheckedAt: response.meta.fetchedAt, retrospective: false };
     // Recheck time after provider access/inference, before persisting a pre-match record.
@@ -168,15 +179,16 @@ export function createPredictions({ root = PRIVATE, provider, now = Date.now } =
       try { await writeFile(path, encode(forecast), { flag: "wx", mode: 0o600 }); }
       catch (error) { if (error.code !== "EEXIST") throw error; }
       const saved = JSON.parse(await readFile(path,"utf8"));
-      require(validForecast(saved,id) && saved.forecastId === forecastId && saved.modelVersion === m.modelVersion);
+      require(validForecast(saved,id) && saved.forecastId === forecastId && saved.modelVersion === m.modelVersion && saved.competition === competition);
       return { available: true, ...saved };
     } catch { return unavailableFor("STORAGE_UNAVAILABLE"); }
   }
-  async function predict(id) {
-    if (pending.has(id)) return pending.get(id);
-    const task = generate(id);
-    pending.set(id, task);
-    try { return await task; } finally { pending.delete(id); }
+  async function predict(id, competition = "PL") {
+    const key = `${competition}:${id}`;
+    if (pending.has(key)) return pending.get(key);
+    const task = generate(id, competition);
+    pending.set(key, task);
+    try { return await task; } finally { pending.delete(key); }
   }
   return { status, evaluation, predict, history };
 }

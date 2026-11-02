@@ -297,7 +297,9 @@ export default function App() {
     ? demoMatches(league).filter(
         (m) => m.utcDate.slice(0, 10) >= from && m.utcDate.slice(0, 10) <= to,
       )
-    : fixtures.data?.data?.matches || [];
+    : (fixtures.data?.data?.matches || []).filter(
+        (m) => m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to,
+      );
   const matches = allMatches.filter((m) => {
     const matchesSearch =
       `${m.homeTeam.name} ${m.awayTeam.name} ${m.competition?.name}`
@@ -483,10 +485,6 @@ export default function App() {
               <h1>{headings[page][0]}</h1>
               <p>{headings[page][1]}</p>
             </div>
-            <div className="date-pill">
-              <CalendarDays size={16} />
-              {demo ? "Demo preview" : "football-data.org"}
-            </div>
           </div>
           {demo && (
             <div className="mode-banner" role="status">
@@ -509,6 +507,9 @@ export default function App() {
               onRetry={() => setRefresh((n) => n + 1)}
             />
           )}
+          {!demo && config.data && config.data.predictionsApiVersion !== 2 && <div className="mode-banner" role="status">
+            <Info size={19} /><span><b>An app update is ready.</b> Restart FormRadar in its terminal with Ctrl+C, then <code>npm run dev</code>, and reload this page. The running server is still using an older version.</span>
+          </div>}
           {config.loading && !config.data && !demo && (
             <Loading label="Checking football connection…" />
           )}
@@ -609,7 +610,7 @@ export default function App() {
                         icon={Target}
                         title="Prediction stage"
                         value={demo ? "Demo" : "Experimental"}
-                        foot={demo ? "Synthetic examples" : "Premier League · current model required"}
+                        foot={demo ? "Synthetic examples" : "PL + Champions League phase models"}
                       />
                     </div>
                   </>
@@ -695,6 +696,16 @@ export default function App() {
                         </label>
                       </div>
                       <div className="date-presets">
+                        <button
+                          onClick={() => {
+                            setFrom(isoDay(1));
+                            setTo(isoDay(1));
+                            setFilter("upcoming");
+                            setSelectedId(null);
+                          }}
+                        >
+                          Tomorrow
+                        </button>
                         <button
                           onClick={() => {
                             setFrom(isoDay());
@@ -838,6 +849,7 @@ export default function App() {
                                   match={selected}
                                   demo={demo}
                                   refresh={refresh + poll}
+                                  backendCurrent={config.data?.predictionsApiVersion === 2}
                                 />
                               ) : (
                                 <section className="panel match-detail">
