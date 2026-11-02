@@ -1,0 +1,18 @@
+import { loadEnvFile } from "node:process";
+import { fileURLToPath } from "node:url";
+
+// Host environment > application .env > original FormRadar/.env.
+// Resolve from this module so starting the app from another directory works.
+export function loadServerEnv(files = [
+  fileURLToPath(new URL("../.env", import.meta.url)),
+  fileURLToPath(new URL("../../../.env", import.meta.url)),
+]) {
+  for (const file of files) {
+    try {
+      loadEnvFile(file);
+    } catch (error) {
+      if (error.code !== "ENOENT")
+        throw new Error("Could not load a FormRadar .env file. Check its format.");
+    }
+  }
+}
