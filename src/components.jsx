@@ -28,7 +28,7 @@ import {
 } from "./format.js";
 
 export function Logo() {
-  return <div className="brand"><img className="brand-light" src="/brand/horizontal-light.svg" alt="FormRadar" width="210" height="50"/><img className="brand-dark" src="/brand/horizontal-dark.svg" alt="FormRadar" width="210" height="50"/><small>FOOTBALL INTELLIGENCE</small></div>;
+  return <div className="brand"><img className="brand-light" src="/brand/horizontal-light.svg" alt="FormRadar" width="210"/><img className="brand-dark" src="/brand/horizontal-dark.svg" alt="FormRadar" width="210"/><small>FOOTBALL INTELLIGENCE</small></div>;
 }
 function MediaBadge({ entity, kind, size, demo = false }) {
   const [failedKey, setFailedKey] = useState(null);

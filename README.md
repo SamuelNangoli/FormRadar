@@ -1,6 +1,6 @@
 # FormRadar v0.2
 
-A local React/Vite football dashboard with a Node.js backend. It uses the Pitch Vision identity and Porcelain Indigo palette, with matching light and dark appearances inspired by prediction markets and score apps. FormRadar is not affiliated with Polymarket or LiveScore.
+A local React/Vite football dashboard with a Node.js backend. It uses the Pulse Core identity and Porcelain Indigo palette, with matching light and dark appearances inspired by prediction markets and score apps. FormRadar is not affiliated with Polymarket or LiveScore.
 
 ## Ubuntu: install and run
 
@@ -77,7 +77,7 @@ Open **http://127.0.0.1:3000**. `npm run preview` also starts this backend with 
 
 ## Appearance and seasons
 
-The header's appearance switch toggles light/dark; the adjacent device icon restores the device preference. A saved choice persists across reloads, and a blocking startup script chooses the theme, logo and favicon before first paint. Theme tokens are centralized in `src/theme.css`. Pitch Vision SVGs and browser icons are served locally from `public/brand`; club/competition artwork retains its original colors. The app is open without accounts; no authentication service is configured or planned for this version.
+The header's appearance switch toggles light/dark; the adjacent device icon restores the device preference. A saved choice persists across reloads, and a blocking startup script chooses the theme, logo and favicon before first paint. Theme tokens are centralized in `src/theme.css`. Pulse Core SVGs and browser icons are served locally from `public/brand`; club/competition artwork retains its original colors. The app is open without accounts; no authentication service is configured or planned for this version.
 
 The **Season** menu above fixtures and standings lists the ten most recent feed-listed seasons from 2000 onwards. Current-season date controls remain unchanged. Choosing an older season opens its full results list with team search; scroll within that list to browse more matches. You can also select that season on Leagues for its table. Each request checks the connected account's access; a listed year is not a promise of free-plan coverage, and denied/missing seasons never fall back to current results. Historical tables may omit past points deductions, as documented by the provider. Team statistics still describe the latest 90 days, and historical results do not generate retroactive model forecasts.
 

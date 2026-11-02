@@ -468,8 +468,8 @@ export default function App() {
             >
               {menu ? <X size={21} /> : <Menu size={21} />}
             </button>
-            <img className="mobile-brand brand-light" src="/brand/mark-light.svg" alt="FormRadar" width="28" height="20"/>
-            <img className="mobile-brand brand-dark" src="/brand/mark-dark.svg" alt="FormRadar" width="28" height="20"/>
+            <img className="mobile-brand brand-light" src="/brand/mark-light.svg" alt="FormRadar" width="28" height="28"/>
+            <img className="mobile-brand brand-dark" src="/brand/mark-dark.svg" alt="FormRadar" width="28" height="28"/>
             <span className="breadcrumb">
               <span className="workspace-label">Workspace</span> <ChevronRight size={14} /> <b>{page}</b>
             </span>
@@ -484,7 +484,7 @@ export default function App() {
               <RefreshCw size={15} className={fixtures.loading ? "spin" : ""} />
               <span>Refresh data</span>
             </button>
-            <div className="avatar" aria-label="FormRadar">
+            <div className="avatar" aria-hidden="true">
               <img className="brand-mark-light" src="/brand/mark-light.svg" alt=""/><img className="brand-mark-dark" src="/brand/mark-dark.svg" alt=""/>
             </div>
           </div>
@@ -561,8 +561,8 @@ export default function App() {
                         <div className="radar-ring r1" />
                         <div className="radar-ring r2" />
                         <div className="radar-ring r3" />
-                        <img className="brand-light hero-pitch" src="/brand/mark-light.svg" alt="" width="180" height="110"/>
-                        <img className="brand-dark hero-pitch" src="/brand/mark-dark.svg" alt="" width="180" height="110"/>
+                        <img className="brand-light hero-brand" src="/brand/mark-light.svg" alt="" width="180" height="180"/>
+                        <img className="brand-dark hero-brand" src="/brand/mark-dark.svg" alt="" width="180" height="180"/>
                         <div className="floating-stat">
                           <Activity size={15} />{" "}
                           {demo ? "SYNTHETIC PREVIEW" : "FOOTBALL FEED READY"}
