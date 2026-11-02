@@ -45,7 +45,7 @@ export default function ExperimentalPrediction({ match, refresh, backendCurrent 
       {valid && <>
         <div className="prob-heading"><b>90-minute outcome</b><span>Model estimate</span></div>
         <div className="prob-numbers">{percentages.map((p,i) => <div key={i}><strong className={["green","amber","blue"][i]}>{p}%</strong><span>{["Home win","Draw","Away win"][i]}</span></div>)}</div>
-        <div className="prob-bar">{percentages.map((p,i) => <span key={i} style={{ width: p+"%", background: ["#39d99a","#e9b35e","#699bf9"][i] }} />)}</div>
+        <div className="prob-bar">{percentages.map((p,i) => <span key={i} style={{ width: p+"%", background: ["var(--chart-home)","var(--chart-draw)","var(--chart-away)"][i] }} />)}</div>
         {data.usesPooledPrior && <p className="source-note">A team without fitted history uses the {champions ? "Champions League" : "league"} prior. This policy was included in historical testing.</p>}
         <dl className="model-details">
           <dt>Results used</dt><dd>{data.trainingMatches.toLocaleString()} · {data.currentSeasonMatches} this season</dd>

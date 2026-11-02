@@ -22,28 +22,29 @@ export default function DemoTrend({ probabilities, period }) {
       >
         <defs>
           <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#36d99b" stopOpacity={0.24} />
-            <stop offset="100%" stopColor="#36d99b" stopOpacity={0} />
+            <stop offset="0%" stopColor="var(--chart-home)" stopOpacity={0.24} />
+            <stop offset="100%" stopColor="var(--chart-home)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid
           vertical={false}
-          stroke="#233044"
+          stroke="var(--border)"
           strokeDasharray="3 4"
         />
         <XAxis dataKey="n" hide />
         <Tooltip
           contentStyle={{
-            background: "#172438",
-            border: "1px solid #33445c",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
             borderRadius: 10,
+            color: "var(--text)",
           }}
           formatter={(v) => [`${v.toFixed(1)}%`, "Demo probability"]}
         />
         <Area
           type="monotone"
           dataKey="value"
-          stroke="#39d99a"
+          stroke="var(--chart-home)"
           strokeWidth={2.5}
           fill="url(#fade)"
           dot={false}

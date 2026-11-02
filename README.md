@@ -1,6 +1,6 @@
 # FormRadar v0.2
 
-A local React/Vite football dashboard with a Node.js backend. It retains the original dark, green-accented interface inspired by prediction markets and score apps. FormRadar is not affiliated with Polymarket or LiveScore.
+A local React/Vite football dashboard with a Node.js backend. It uses the Pitch Vision identity and Porcelain Indigo palette, with matching light and dark appearances inspired by prediction markets and score apps. FormRadar is not affiliated with Polymarket or LiveScore.
 
 ## Ubuntu: install and run
 
@@ -75,6 +75,14 @@ npm start
 
 Open **http://127.0.0.1:3000**. `npm run preview` also starts this backend with the built frontend. `PORT` in `.env` changes the production port. Always run the backend: a static-only host cannot serve the `/api` routes or keep a provider token server-side.
 
+## Appearance and seasons
+
+The header's appearance switch toggles light/dark; the adjacent device icon restores the device preference. A saved choice persists across reloads, and a blocking startup script chooses the theme, logo and favicon before first paint. Theme tokens are centralized in `src/theme.css`. Pitch Vision SVGs and browser icons are served locally from `public/brand`; club/competition artwork retains its original colors. The app is open without accounts; no authentication service is configured or planned for this version.
+
+The **Season** menu above fixtures and standings lists the ten most recent feed-listed seasons from 2000 onwards. Current-season date controls remain unchanged. Choosing an older season opens its full results list with team search; scroll within that list to browse more matches. You can also select that season on Leagues for its table. Each request checks the connected account's access; a listed year is not a promise of free-plan coverage, and denied/missing seasons never fall back to current results. Historical tables may omit past points deductions, as documented by the provider. Team statistics still describe the latest 90 days, and historical results do not generate retroactive model forecasts.
+
+Head-to-head results now include the original club crests. See [appearance and season notes](docs/appearance-and-seasons.md).
+
 ## What changed
 
 - Split the single frontend file into application, reusable components, request hook, formatting helpers and an isolated demo data module.
@@ -118,6 +126,7 @@ Browser requests go only to same-origin `/api` endpoints. The backend sends the 
 
 | Route                                                               | Purpose                                                          | Server cache     |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------- |
+| `/api/seasons?competition=PL` | Recent provider season metadata; access checked on selection | 15 minutes |
 | `/api/config`                                                       | Configuration status and supported competitions; never the token | No upstream call |
 | `/api/health`                                                       | Same safe status response                                        | No upstream call |
 | `/api/matches?competition=PL&dateFrom=2026-11-01&dateTo=2026-11-07` | Inclusive UTC schedule window                                    | 60 seconds       |
@@ -132,7 +141,7 @@ Browser requests go only to same-origin `/api` endpoints. The backend sends the 
 | `/api/matches/500/head-to-head` | Latest returned prior completed meetings for the selected clubs | 15 minutes; fixture 60 seconds |
 | `/api/matches/500/lineups?view=reported` | Provider starting XI; `view=possible` permits labelled recent-XI references before kickoff | 2 minutes upcoming; 1 day completed XIs |
 
-The fixtures and results routes accept the same optional `competition`, `dateFrom` and `dateTo` parameters as `/api/matches`. Explicit date ranges are inclusive UTC dates and cover at most 31 days. The backend requests a covering interval and enforces the selected inclusive dates locally, including when the provider returns adjacent-day fixtures.
+The fixtures and results routes accept the same optional `competition`, `dateFrom`, `dateTo` and `season` parameters as `/api/matches`. `season` is a bounded starting year, such as `2025`; without date filters it requests the complete selected season, capped at 1,000 returned matches and cached for fifteen minutes. Standings also accepts `season`. Explicit date ranges are inclusive UTC dates and cover at most 31 days. The backend requests a covering interval and enforces the selected inclusive dates locally, including when the provider returns adjacent-day fixtures.
 
 Requests for the same upstream resource are coalesced. A rolling budget allows at most 9 provider calls per minute per process, leaving margin below the documented 10/minute free-plan limit. Other apps using the same token share the provider's quota. Upstream throttling and network failures have cooldowns. Rate-limit responses respect `Retry-After` (seconds or HTTP date) and `X-RequestCounter-Reset`, with a minimum 60-second cooldown; the browser receives a safe `Retry-After` header and message. Authentication cooldowns retain the authentication error rather than becoming a throttle response. On temporary failures or throttling, an existing cached response up to 24 hours old may be returned with an explicit warning and its original retrieval time. Authentication and coverage failures do not use this fallback. The browser also discards cached responses whose original retrieval time exceeds 24 hours. The server cache is in memory, bounded to 200 resources, and resets when the server restarts; it is not shared across processes.
 
@@ -158,7 +167,7 @@ npm run build
 
 The backend suite uses an injected fake provider and disposable local HTTP servers; it never needs or spends a real API token. It tests route validation, secret redaction, date boundaries, standings, home/away statistics, null scores, caching, concurrent request coalescing, bounded stale responses, rate limits, provider failures and production file isolation.
 
-The current integration and experimental prediction workflow passed 57 Node/API/importer/prediction/news/match-information tests, 9 Python model tests, and the production build. Tests cover parent `.env` loading and precedence, dedicated status routes and cache lifetimes, malformed upstream data, base-URL credential safeguards, authentication cooldowns, rate limits, provider/ID media identity, unsafe-image rejection, metadata reuse, existing statistics/security behavior, resumable complete-season imports, checksums, bounded retries, normalized 1X2 probabilities, test-target isolation and separate refits. Match-information tests cover previous-meeting chronology, unique cross-provider fixture matching, eleven-player validation, actual/reference distinction, plan errors and credential isolation. Heat-map tests check symmetry, normalization, known probabilities and tail buckets. A Python-exported artifact is checked through the Node loader and forecast/history path, including microsecond timestamps, malformed dates and expiry. The Champions League workflow was run locally on real provider data after separate chronological evaluation. Private sources, model parameters, reports and forecast records remain excluded from Git and the source ZIP.
+The current integration and experimental prediction workflow passed 60 Node/API/importer/prediction/news/match-information/season tests, 9 Python model tests, and the production build. Tests cover parent `.env` loading and precedence, dedicated status routes and cache lifetimes, malformed upstream data, base-URL credential safeguards, authentication cooldowns, rate limits, provider/ID media identity, unsafe-image rejection, metadata reuse, existing statistics/security behavior, resumable complete-season imports, checksums, bounded retries, normalized 1X2 probabilities, test-target isolation and separate refits. Match-information tests cover previous-meeting chronology, unique cross-provider fixture matching, eleven-player validation, actual/reference distinction, plan errors and credential isolation. Heat-map tests check symmetry, normalization, known probabilities and tail buckets. A Python-exported artifact is checked through the Node loader and forecast/history path, including microsecond timestamps, malformed dates and expiry. The Champions League workflow was run locally on real provider data after separate chronological evaluation. Private sources, model parameters, reports and forecast records remain excluded from Git and the source ZIP.
 
 The 2 November match-information browser check displayed seven prior Liverpool–Arsenal meetings, the current-season lineup coverage message and a real CL fixture's interactive scoreline grid. Selecting a different cell updated its score and percentage. All three configured credentials were absent from staged source and the built frontend. No live current-season lineup success is claimed with the connected Free plan.
 

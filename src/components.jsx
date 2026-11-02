@@ -28,19 +28,7 @@ import {
 } from "./format.js";
 
 export function Logo() {
-  return (
-    <div className="brand">
-      <div className="brand-icon">
-        <Radar size={25} />
-      </div>
-      <div className="brand-copy">
-        <strong>
-          Form<span>Radar</span>
-        </strong>
-        <small>FOOTBALL INTELLIGENCE</small>
-      </div>
-    </div>
-  );
+  return <div className="brand"><img className="brand-light" src="/brand/horizontal-light.svg" alt="FormRadar" width="210" height="50"/><img className="brand-dark" src="/brand/horizontal-dark.svg" alt="FormRadar" width="210" height="50"/><small>FOOTBALL INTELLIGENCE</small></div>;
 }
 function MediaBadge({ entity, kind, size, demo = false }) {
   const [failedKey, setFailedKey] = useState(null);
@@ -397,7 +385,7 @@ function DemoPrediction({ match }) {
               key={i}
               style={{
                 width: p + "%",
-                background: ["#39d99a", "#e9b35e", "#699bf9"][i],
+                background: ["var(--chart-home)", "var(--chart-draw)", "var(--chart-away)"][i],
               }}
             />
           ))}

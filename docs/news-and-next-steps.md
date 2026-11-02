@@ -1,6 +1,6 @@
 # News Radar and next development stages
 
-Updated 2 November 2026. Guardian news is connected locally. Authentication and player-data integration below are a roadmap, not completed features.
+Updated 2 November 2026. Guardian news is connected locally. The app remains open without accounts. Player profiles and richer availability data below are a roadmap.
 
 Starting-lineup display and labelled recent-XI references have since been implemented; see [match information and heat map setup](match-insights.md). The connected API-Football Free plan excludes the current season, so current lineups show a coverage message. Player profiles, structured injuries and player-form metrics remain future work.
 
@@ -14,9 +14,9 @@ Choose a competition, optionally a team from its standings, and latest reporting
 
 The live check returned 20 CL articles; a team/availability query returned a successful normalized response too. These are dated checks, not continuous coverage guarantees. Twelve competitions are now listed from checked Football-Data.org TIER_ONE metadata. Fixture/table access still depends on the account and season; evaluated forecasts cover PL and CL league phase only.
 
-## Authentication next
+## Open access
 
-Recommended: [Supabase Auth](https://supabase.com/docs/guides/auth) and Postgres. Begin with account creation, email verification, sign-in, password reset and sign-out; add Google sign-in if wanted. Validate sessions on server data routes, not only in the menu. Store profiles, favourite teams, preferences and user-owned forecast bookmarks with database access policies. Keep administrator and service credentials on the server. Public hosting, email delivery and appropriate commercial data access are later setup steps. No auth service or database has been provisioned yet.
+The user chose an open app for a small group of friends. There is no signup, login, account database or authentication service to configure. No account system is planned for this version. Provider credentials remain on the backend.
 
 ## Player bio, availability and form
 

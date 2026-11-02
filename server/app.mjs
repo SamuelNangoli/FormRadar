@@ -5,6 +5,7 @@ import { competitions } from "../shared/competitions.js";
 import { createPredictions } from "./predictions.mjs";
 import { createNews, newsTopics } from "./news.mjs";
 import { createMatchInsights } from "./match-insights.mjs";
+import {seasonYear,seasonList} from "./seasons.mjs";
 import {
   ApiError,
   createProvider,
@@ -22,6 +23,7 @@ const MIME = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".ico": "image/x-icon",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".woff2": "font/woff2",
 };
 const badInput = (message) => new ApiError(400, "INVALID_REQUEST", message);
@@ -77,10 +79,16 @@ export function createApp({
         predictionCompetitions: ["PL","CL"],
         news: news.status(),
         matchInsightsVersion:1,
+        seasonsApiVersion:1,
         lineupSourceConfigured:insights.lineupConfigured,
         scoresMayBeDelayed: true,
         competitions,
       };
+    }
+    if(url.pathname==="/api/seasons"){
+      onlyParams(params,["competition"]);
+      const code=competition(params);
+      return provider.get(`/competitions/${code}`,900_000,seasonList);
     }
     const insightMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})\/(head-to-head|lineups)$/);
     if(insightMatch){onlyParams(params,insightMatch[2]==="lineups"?["view"]:[]);const view=params.get("view")||"reported";if(!["reported","possible"].includes(view))throw badInput("Choose reported or possible lineups.");return insightMatch[2]==="head-to-head"?insights.headToHead(Number(insightMatch[1])):insights.lineups(Number(insightMatch[1]),view==="possible");}
@@ -110,8 +118,10 @@ export function createApp({
       return predictionMatch[2] ? predictions.history(Number(predictionMatch[1])) : predictions.predict(Number(predictionMatch[1]),competition(params));
     }
     if (["/api/matches", "/api/fixtures", "/api/results"].includes(url.pathname)) {
-      onlyParams(params, ["competition", "dateFrom", "dateTo"]);
+      onlyParams(params, ["competition", "dateFrom", "dateTo", "season"]);
       const code = competition(params);
+      const year = seasonYear(params,now());
+      const fullSeason = year !== null && !params.has("dateFrom") && !params.has("dateTo");
       const today = new Date(now()).toISOString().slice(0, 10);
       const results = url.pathname === "/api/results";
       const fixtures = url.pathname === "/api/fixtures";
@@ -119,27 +129,28 @@ export function createApp({
         (results ? dateShift(today, -6) : today);
       const to = params.get("dateTo") ||
         (results ? today : fixtures ? dateShift(from, 6) : from);
-      if (
+      if (!fullSeason && (
         !validDate(from) ||
         !validDate(to) ||
         to < from ||
         (Date.parse(to) - Date.parse(from)) / DAY > 30
-      )
+      ))
         throw badInput("Use valid dates in order, covering at most 31 days.");
       // Request a covering range, then enforce the UI's inclusive dates locally.
-      const query = new URLSearchParams({
+      const query = new URLSearchParams(fullSeason ? {} : {
         dateFrom: from,
         dateTo: dateShift(to, 1),
       });
+      if(year!==null)query.set("season",String(year));
       const statuses = results ? ["FINISHED"]
         : fixtures ? ["SCHEDULED", "TIMED"] : null;
       if (statuses) query.set("status", statuses.join(","));
       return provider.get(
         `/competitions/${code}/matches?${query}`,
-        results ? 300_000 : 60_000,
+        fullSeason ? 900_000 : results ? 300_000 : 60_000,
         (raw) => {
           if (
-            !Array.isArray(raw?.matches) || raw.matches.some((m) =>
+            !Array.isArray(raw?.matches) || raw.matches.length>1000 || raw.matches.some((m) =>
               !m || !Number.isInteger(m.id) || typeof m.utcDate !== "string" ||
               !Number.isFinite(Date.parse(m.utcDate)) || typeof m.status !== "string",
             )
@@ -149,13 +160,16 @@ export function createApp({
               "INVALID_PROVIDER_DATA",
               "The provider returned an invalid fixture list.",
             );
+          if(year!==null&&(raw.filters?.season!==undefined&&Number(raw.filters.season)!==year||raw.matches.some(m=>m.season?.startDate!==undefined&&(!validDate(m.season.startDate)||Number(m.season.startDate.slice(0,4))!==year))))throw new ApiError(502,"INVALID_PROVIDER_DATA","The provider returned a different season. No results were substituted.");
           return {
             competition: code,
             competitionInfo: competitionView(raw.competition, code),
-            dateFrom: from,
-            dateTo: to,
+            season:year,
+            fullSeason,
+            dateFrom:fullSeason?null:from,
+            dateTo:fullSeason?null:to,
             matches: raw.matches
-              .filter((m) => m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to
+              .filter((m) => (fullSeason || m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to)
                 && (!statuses || statuses.includes(m.status)))
               .map((m) =>
                 matchView({
@@ -172,9 +186,10 @@ export function createApp({
       );
     }
     if (url.pathname === "/api/standings") {
-      onlyParams(params, ["competition"]);
+      onlyParams(params, ["competition","season"]);
       const code = competition(params);
-      return provider.get(`/competitions/${code}/standings`, 900_000, (raw) => {
+      const year=seasonYear(params,now());
+      return provider.get(`/competitions/${code}/standings${year===null?"":`?season=${year}`}`, 900_000, (raw) => {
         if (
           !Array.isArray(raw?.standings) || raw.standings.some((s) =>
             !s || (s.type === "TOTAL" &&
@@ -186,6 +201,7 @@ export function createApp({
             "INVALID_PROVIDER_DATA",
             "The provider returned an invalid league table.",
           );
+        if(year!==null&&(!validDate(raw.season?.startDate)||Number(raw.season.startDate.slice(0,4))!==year))throw new ApiError(502,"INVALID_PROVIDER_DATA","The provider returned a different season's table. No table was substituted.");
         return {
           competition: code,
           competitionInfo: competitionView(raw.competition, code),

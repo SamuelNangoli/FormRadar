@@ -20,13 +20,14 @@ import {
   KeyRound,
   ExternalLink,
   Info,
-  Radar,
 } from "lucide-react";
 import { competitions } from "../shared/competitions.js";
 import { useResource } from "./api.js";
 import { demoMatches, demoStandings } from "./demo.js";
 import NewsRadar from "./NewsRadar.jsx";
 import MatchInsights from "./MatchInsights.jsx";
+import ThemeControl from "./ThemeControl.jsx";
+import SeasonSelect from "./SeasonSelect.jsx";
 import { isoDay, isLive, dayLabel } from "./format.js";
 import {
   Logo,
@@ -122,10 +123,10 @@ function Setup({ onDemo, onRetry }) {
   );
 }
 
-function Standings({ league, demo, refresh }) {
+function Standings({ league, season:selectedSeason, demo, refresh }) {
   const [retry, setRetry] = useState(0);
   const [team, setTeam] = useState(null);
-  const resource = useResource(`/api/standings?competition=${league}`, {
+  const resource = useResource(`/api/standings?competition=${league}${selectedSeason?`&season=${selectedSeason}`:""}`, {
     enabled: !demo,
     refresh: refresh + retry,
     ttl: 900_000,
@@ -157,6 +158,7 @@ function Standings({ league, demo, refresh }) {
           />
         )}
         {resource.loading && <Loading label="Loading league standings…" />}
+        {selectedSeason&&<p className="source-note">Historical table compiled by the provider; past points deductions may not be retained. Team statistics below describe the latest 90 days.</p>}
         {data?.standings?.map((group, i) => (
           <div key={i}>
             <div className="table-group-label">
@@ -167,7 +169,7 @@ function Standings({ league, demo, refresh }) {
             <div className="table-scroll">
               <table>
                 <caption className="sr-only">
-                  {demo ? "Synthetic demo" : "Current"} standings. Select a team
+                  {demo ? "Synthetic demo" : selectedSeason?"Historical":"Current"} standings. Select a team
                   name to see its statistics.
                 </caption>
                 <thead>
@@ -263,6 +265,7 @@ export default function App() {
     () => window.matchMedia("(max-width:850px)").matches,
   );
   const [league, setLeague] = useState("PL");
+  const [season,setSeason]=useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");
@@ -275,18 +278,20 @@ export default function App() {
   const config = useResource("/api/config", { refresh, ttl: 5000 });
   const demo = mode === "demo";
   const ready = demo || Boolean(config.data?.configured);
+  const seasons=useResource(`/api/seasons?competition=${league}`,{enabled:ready&&!demo&&page!=="News Radar",refresh,ttl:900_000});
+  const selectedSeason=seasons.data?.data?.seasons?.find(s=>String(s.year)===season);
+  const seasonLabel=selectedSeason?.label||season;
   const schedulePage = ["Overview", "Live Scores", "Predictions"].includes(
     page,
   );
   const invalidDates =
-    !from ||
+    !season && (!from ||
     !to ||
     from > to ||
-    (Date.parse(to) - Date.parse(from)) / 86_400_000 > 30;
+    (Date.parse(to) - Date.parse(from)) / 86_400_000 > 30);
   const query = new URLSearchParams({
     competition: league,
-    dateFrom: from,
-    dateTo: to,
+    ...(season?{season}:{dateFrom:from,dateTo:to}),
   });
   const matchEndpoint =
     filter === "upcoming" ? "fixtures" : filter === "results" ? "results" : "matches";
@@ -300,7 +305,7 @@ export default function App() {
         (m) => m.utcDate.slice(0, 10) >= from && m.utcDate.slice(0, 10) <= to,
       )
     : (fixtures.data?.data?.matches || []).filter(
-        (m) => m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to,
+        (m) => season || m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to,
       );
   const matches = allMatches.filter((m) => {
     const matchesSearch =
@@ -332,15 +337,18 @@ export default function App() {
   };
   const switchLeague = (code) => {
     setLeague(code);
+    setSeason("");
     setSelectedId(null);
   };
   const switchMode = (value) => {
     setMode(value);
+    setSeason("");
     setSelectedId(null);
   };
   const switchFilter = (value) => {
     setFilter(value);
     setSelectedId(null);
+    if (season) return;
     if (value === "results") {
       setFrom(isoDay(-6));
       setTo(isoDay());
@@ -360,12 +368,12 @@ export default function App() {
     return () => media.removeEventListener("change", update);
   }, []);
   useEffect(() => {
-    if (!ready || demo || !schedulePage) return;
+    if (!ready || demo || !schedulePage || season) return;
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") setPoll((n) => n + 1);
     }, 60_000);
     return () => clearInterval(timer);
-  }, [ready, demo, schedulePage]);
+  }, [ready, demo, schedulePage,season]);
   useEffect(() => {
     if (!menu) return;
     document.getElementById("sidebar-close")?.focus();
@@ -460,11 +468,14 @@ export default function App() {
             >
               {menu ? <X size={21} /> : <Menu size={21} />}
             </button>
+            <img className="mobile-brand brand-light" src="/brand/mark-light.svg" alt="FormRadar" width="28" height="20"/>
+            <img className="mobile-brand brand-dark" src="/brand/mark-dark.svg" alt="FormRadar" width="28" height="20"/>
             <span className="breadcrumb">
-              Workspace <ChevronRight size={14} /> <b>{page}</b>
+              <span className="workspace-label">Workspace</span> <ChevronRight size={14} /> <b>{page}</b>
             </span>
           </div>
           <div className="top-right">
+            <ThemeControl/>
             <button
               className="quiet-button refresh-button"
               disabled={config.loading || fixtures.loading}
@@ -474,7 +485,7 @@ export default function App() {
               <span>Refresh data</span>
             </button>
             <div className="avatar" aria-label="FormRadar">
-              FR
+              <img className="brand-mark-light" src="/brand/mark-light.svg" alt=""/><img className="brand-mark-dark" src="/brand/mark-dark.svg" alt=""/>
             </div>
           </div>
         </header>
@@ -550,7 +561,8 @@ export default function App() {
                         <div className="radar-ring r1" />
                         <div className="radar-ring r2" />
                         <div className="radar-ring r3" />
-                        <Radar size={130} strokeWidth={0.8} />
+                        <img className="brand-light hero-pitch" src="/brand/mark-light.svg" alt="" width="180" height="110"/>
+                        <img className="brand-dark hero-pitch" src="/brand/mark-dark.svg" alt="" width="180" height="110"/>
                         <div className="floating-stat">
                           <Activity size={15} />{" "}
                           {demo ? "SYNTHETIC PREVIEW" : "FOOTBALL FEED READY"}
@@ -597,6 +609,7 @@ export default function App() {
                 )}
                 {page === "Leagues" ? (
                   <>
+                    <SeasonSelect resource={seasons} value={season} demo={demo} onChange={value=>{setSeason(value);setSelectedId(null);}}/>
                     <div className="league-grid">
                       {competitions.map((c) => (
                         <button
@@ -610,7 +623,7 @@ export default function App() {
                         >
                           <CompetitionEmblem competition={c} size={48} demo={demo} />
                           <h3>{c.name}</h3>
-                          <p>{c.area} · current season</p>
+                          <p>{c.area} · {season&&league===c.code?seasonLabel:"current season"}</p>
                           <span>
                             View standings <ArrowRight size={16} />
                           </span>
@@ -618,8 +631,9 @@ export default function App() {
                       ))}
                     </div>
                     <Standings
-                      key={`${league}-${demo}`}
+                      key={`${league}-${season}-${demo}`}
                       league={league}
+                      season={season}
                       demo={demo}
                       refresh={refresh}
                     />
@@ -654,6 +668,10 @@ export default function App() {
                         </select>
                       </label>
                     </div>
+                    <SeasonSelect resource={seasons} value={season} demo={demo} onChange={value=>{setSeason(value);setFilter(value?"results":"all");setSelectedId(null);}}/>
+                    {season&&<div className="season-notice">Viewing the {seasonLabel} season. Historical fixtures and results use your account's available coverage. Current team statistics remain a separate last-90-days summary.</div>}
+                    {season&&<label className="fixture-search season-search"><Search size={16}/><input aria-label="Search teams" placeholder="Search teams in this season…" value={search} onChange={e=>setSearch(e.target.value)}/>{search&&<button className="icon-btn" aria-label="Clear search" onClick={()=>setSearch("")}><X size={14}/></button>}</label>}
+                    {!season&&
                     <div className="fixture-controls">
                       <div className="date-controls">
                         <label>
@@ -729,7 +747,7 @@ export default function App() {
                           </button>
                         )}
                       </label>
-                    </div>
+                    </div>}
                     {invalidDates ? (
                       <div className="error-notice" role="alert">
                         Choose valid dates in order, covering at most 31 days.
@@ -758,11 +776,10 @@ export default function App() {
                         </div>
                         <div className="dashboard-grid">
                           <div className="left-column">
-                            <section className="panel match-list">
+                            <section className={`panel match-list${season?" season-list":""}`}>
                               <div className="panel-title">
                                 <span>
-                                  <CalendarDays size={17} /> {dayLabel(from)} –{" "}
-                                  {dayLabel(to)}
+                                  <CalendarDays size={17} /> {season?`${seasonLabel} season`:`${dayLabel(from)} – ${dayLabel(to)}`}
                                 </span>
                                 <span className="subtle">
                                   {awaitingMatches ? "Awaiting data"
