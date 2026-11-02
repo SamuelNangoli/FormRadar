@@ -25,6 +25,7 @@ import {
 import { competitions } from "../shared/competitions.js";
 import { useResource } from "./api.js";
 import { demoMatches, demoStandings } from "./demo.js";
+import NewsRadar from "./NewsRadar.jsx";
 import { isoDay, isLive, dayLabel } from "./format.js";
 import {
   Logo,
@@ -67,7 +68,7 @@ const headings = {
   ],
   "News Radar": [
     "News radar",
-    "A space for verified football information. Source integration is still pending.",
+    "Source-linked football reporting, team context and publication times.",
   ],
 };
 
@@ -409,9 +410,9 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="side-caption second">YOUR LEAGUES</div>
+        <div className="side-caption second">COMPETITIONS · {competitions.length}</div>
         <div className="league-side">
-          {competitions.slice(0, 3).map((c) => (
+          {competitions.map((c) => (
             <button
               key={c.code}
               onClick={() => {
@@ -520,29 +521,7 @@ export default function App() {
             />
           )}
           {page === "News Radar" ? (
-            <div className="news-layout">
-              <div className="panel empty-news">
-                <Newspaper size={38} />
-                <h3>News intelligence is on the roadmap</h3>
-                <p>
-                  Verified club reports, injury updates and source checks will
-                  appear here once a news feed is connected.
-                </p>
-                <div className="source-tags">
-                  <span>Official club reports</span>
-                  <span>Injury updates</span>
-                  <span>Source verification</span>
-                </div>
-              </div>
-              <div className="panel news-note">
-                <ShieldCheck size={23} />
-                <h3>Verification first</h3>
-                <p>
-                  Rumours need a source, timestamp and credibility assessment
-                  before they can inform a future model.
-                </p>
-              </div>
-            </div>
+            <NewsRadar league={league} onLeagueChange={switchLeague} refresh={refresh} config={config.data} demo={demo}/>
           ) : (
             ready && (
               <>
@@ -832,10 +811,10 @@ export default function App() {
                                   <ShieldCheck size={22} />
                                 </div>
                                 <div>
-                                  <b>Source-verified football intelligence</b>
+                                  <b>Football reporting with its source</b>
                                   <p>
-                                    News and injury feeds are planned. They do
-                                    not affect model estimates.
+                                    Read Guardian headlines and team context in
+                                    News Radar. Reporting does not yet change model estimates.
                                   </p>
                                 </div>
                               </div>

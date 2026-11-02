@@ -29,6 +29,8 @@ select:focus-visible {
   min-height: 100vh;
 }
 .sidebar {
+  overflow-y: auto;
+  scrollbar-width: thin;
   width: 244px;
   background: #0e1625;
   border-right: 1px solid #202b3b;
@@ -48,6 +50,7 @@ select:focus-visible {
   gap: 10px;
   padding: 0 11px 40px;
 }
+.sidebar > * { flex-shrink: 0; }
 .brand-icon {
   width: 39px;
   height: 39px;
@@ -114,6 +117,7 @@ select:focus-visible {
   margin-left: auto;
 }
 .league-side {
+  flex-shrink: 0;
   display: grid;
   gap: 4px;
 }
@@ -140,6 +144,7 @@ select:focus-visible {
   color: #6e8096;
 }
 .sidebar-bottom {
+  padding-top: 18px;
   margin-top: auto;
 }
 .side-promo {
@@ -994,6 +999,27 @@ select:focus-visible {
   grid-template-columns: 2fr 1fr;
   gap: 16px;
 }
+.news-feed { min-width: 0; }
+.news-filter-row { display: grid; grid-template-columns: 1.4fr 1fr 1.1fr; gap: 12px; padding: 20px; border-bottom: 1px solid #243247; }
+.news-filter-row label { display: grid; gap: 7px; color: #92a4ba; font-size: 11px; min-width: 0; }
+.news-filter-row select { min-width: 0; width: 100%; border: 1px solid #304157; color: #e9f1fa; background: #121e2e; border-radius: 7px; padding: 10px; font-size: 12px; }
+.news-filter-row select:disabled { opacity: .5; }
+.news-setup { padding: 30px; line-height: 1.8; font-size: 13px; color: #9badc3; }
+.news-setup > svg { color: #43dda3; }
+.news-setup h3 { color: #eef4fb; }
+.news-setup a, .news-source-note a { color: #56dfb0; }
+.news-setup li { margin: 9px 0; }
+.news-filter-note { color: #98acc2; font-size: 12px; line-height: 1.7; padding: 0 20px; }
+.news-article { padding: 20px 24px; border-bottom: 1px solid #243247; }
+.news-article-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 10px; color: #94a8be; }
+.news-article-meta > span:first-child { color: #58ddae; }
+.news-article h3 { font-size: 17px; line-height: 1.5; margin: 10px 0; }
+.news-article h3 a { color: #ecf3fc; text-decoration: none; }
+.news-article h3 a:hover { color: #65e3b8; text-decoration: underline; }
+.news-article h3 svg { vertical-align: middle; margin-left: 4px; }
+.news-article p, .news-source-note { color: #8196ae; font-size: 11px; line-height: 1.7; }
+.news-source-note { padding: 15px 20px; margin: 0; }
+.news-retry { margin: 0 20px 20px; }
 .empty-news,
 .news-note {
   padding: 35px;
@@ -1098,6 +1124,7 @@ footer span {
   }
 }
 @media (max-width: 600px) {
+  .news-filter-row { grid-template-columns: 1fr; }
   .content {
     padding: 22px 15px 75px;
   }

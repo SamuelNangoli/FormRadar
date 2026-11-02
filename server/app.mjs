@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import { resolve, relative, extname, sep } from "node:path";
 import { competitions } from "../shared/competitions.js";
 import { createPredictions } from "./predictions.mjs";
+import { createNews, newsTopics } from "./news.mjs";
 import {
   ApiError,
   createProvider,
@@ -55,9 +56,12 @@ export function createApp({
   distDir,
   maxCalls,
   modelRoot,
+  guardianKey = process.env.GUARDIAN_API_KEY,
+  newsFetchImpl,
 } = {}) {
   const provider = createProvider({ key, baseUrl, fetchImpl, now, maxCalls });
   const predictions = createPredictions({ root: modelRoot, provider, now });
+  const news = createNews({key:guardianKey,fetchImpl:newsFetchImpl,now});
   async function api(url) {
     const params = url.searchParams;
     if (url.pathname === "/api/config" || url.pathname === "/api/health") {
@@ -67,9 +71,25 @@ export function createApp({
         predictions: "experimental",
         predictionsApiVersion: 2,
         predictionCompetitions: ["PL","CL"],
+        news: news.status(),
         scoresMayBeDelayed: true,
         competitions,
       };
+    }
+    if(url.pathname==="/api/news/status") {onlyParams(params,[]);return news.status();}
+    if(url.pathname==="/api/news") {
+      onlyParams(params,["competition","teamId","topic"]);
+      const code=competition(params),topic=params.get("topic")||"all",id=params.get("teamId");
+      if(!newsTopics.includes(topic)||id!==null&&!/^[1-9]\d{0,6}$/.test(id))throw badInput("Choose a valid news topic and team.");
+      if(!news.status().configured)return news.get({competition:code,topic});
+      let team=null;
+      if(id!==null){const result=await provider.get(`/teams/${id}`,900_000,raw=>{
+        const names=JSON.stringify([raw?.name,raw?.shortName]);
+        if(raw?.id!==Number(id)||typeof raw.name!=="string"||!raw.name.trim()
+          || [key,guardianKey].some(secret=>secret?.trim()&&names.includes(secret.trim())))throw new ApiError(502,"INVALID_PROVIDER_DATA","Could not identify that team for news filtering.");
+        return {id:raw.id,name:raw.name,shortName:typeof raw.shortName==="string"?raw.shortName:null};
+      });team=result.data;}
+      return news.get({competition:code,topic,team});
     }
     if (url.pathname === "/api/model/status" || url.pathname === "/api/model/evaluation") {
       onlyParams(params, ["competition"]);

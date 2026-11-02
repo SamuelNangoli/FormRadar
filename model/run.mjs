@@ -11,7 +11,7 @@ try {
   if (!existsSync(python)) throw new DatasetError("Run npm run model:setup first to create the project Python environment.");
   if (["evaluate", "refit"].includes(action)) await loadDataset(PRIVATE);
   const env = { ...process.env, PYTHONDONTWRITEBYTECODE: "1", OPENBLAS_NUM_THREADS: "1", OMP_NUM_THREADS: "1" };
-  for (const name of Object.keys(env)) if (/^FOOTBALL_DATA_/.test(name)) delete env[name];
+  for (const name of Object.keys(env)) if (/^(FOOTBALL_DATA_|GUARDIAN_API_KEY$)/.test(name)) delete env[name];
   const ready = spawnSync(python, ["-c", "import numpy,scipy"], { env, stdio: "pipe" });
   if (ready.status !== 0) throw new DatasetError("Python dependencies are incomplete. Rerun npm run model:setup, then retry this command.");
   const args = action === "test" ? ["-m", "unittest", "discover", "-s", "model/tests", "-v"]

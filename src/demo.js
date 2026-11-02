@@ -18,7 +18,7 @@ const pairs = {
   ],
 };
 export function demoMatches(code) {
-  return pairs[code].map(([homeTeam, awayTeam], i) => ({
+  return (pairs[code] || []).map(([homeTeam, awayTeam], i) => ({
     id: `${code}-demo-${i}`,
     competition: { ...competitions.find((c) => c.code === code), provider: "demo", emblem: null },
     homeTeam,
@@ -29,6 +29,7 @@ export function demoMatches(code) {
   }));
 }
 export function demoStandings(code) {
+  if (!pairs[code]) return [];
   return [
     {
       stage: "SYNTHETIC SAMPLE",
