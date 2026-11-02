@@ -4,6 +4,7 @@ import { useResource } from "./api.js";
 import { Versus, Loading, ErrorNotice } from "./components.jsx";
 import { displayPercentages } from "./probability.js";
 import ScorelineHeatmap from "./ScorelineHeatmap.jsx";
+import ForecastHistory from "./ForecastHistory.jsx";
 
 const date = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
 
@@ -26,7 +27,6 @@ export default function ExperimentalPrediction({ match, refresh, backendCurrent 
   const history = useResource(`/api/predictions/${match.id}/history`, { enabled:backendCurrent && supported, refresh: `${refresh}-${retry}-${data?.forecastId || ""}`, ttl: 0 });
   const evaluation = useResource(`/api/model/evaluation?competition=${competition}`, { enabled: review && backendCurrent && supported, refresh: refresh + retry, ttl: 0 });
   const percentages = valid ? displayPercentages(data.probabilities) : null;
-  const saved = history.error ? [] : history.data?.forecasts || [];
   return <>
     <section className="panel prediction">
       <div className="panel-title"><span><Target size={18} /> Model estimate</span><span className="ai-badge">EXPERIMENTAL</span></div>
@@ -76,17 +76,6 @@ export default function ExperimentalPrediction({ match, refresh, backendCurrent 
     </section>
     {valid && data.scoreline && <ScorelineHeatmap key={data.forecastId} scoreline={data.scoreline} match={match}/>}
     {valid&&!data.scoreline&&<section className="panel"><p className="source-note">Restart FormRadar and reload this page to enable the scoreline heat map. Saved forecasts are preserved.</p></section>}
-    <section className="panel model-history">
-      <div className="panel-title"><span>Saved pre-match forecasts</span><span className="subtle">{history.error||history.data?.storageAvailable===false?"History unavailable":history.loading?"Checking…":`${saved.length} ${saved.length===1?"revision":"revisions"}`}</span></div>
-      {history.loading && <Loading label="Loading saved forecasts…" />}
-      {history.error && <ErrorNotice error={history.error} onRetry={() => setRetry((n) => n+1)} />}
-      {!history.loading && !history.error && history.data?.storageAvailable!==false && !saved.length && <p className="source-note">No forecast has been saved for this fixture yet.</p>}
-      {history.data?.storageAvailable===false&&<p className="source-note">{history.data.message}</p>}
-      {saved.length > 0 && <div className="table-scroll"><table><caption className="sr-only">Actual saved experimental forecasts, never backfilled</caption><thead><tr><th>Saved</th><th>Home</th><th>Draw</th><th>Away</th><th>Model</th></tr></thead><tbody>{saved.map((f) => {
-        const p = displayPercentages(f.probabilities);
-        return <tr key={f.forecastId}><td>{date(f.generatedAt)}</td>{p.map((v,i) => <td key={i}>{v}%</td>)}<td title={f.modelVersion}>{f.modelVersion.slice(0,8)}</td></tr>;
-      })}</tbody></table></div>}
-      <p className="source-note">Real saved revisions only. Reopening the same fixture, model and forecast format reuses its original record. Updated models, changed kickoffs or a new forecast format create a revision.</p>
-    </section>
+    <ForecastHistory resource={history} onRetry={()=>setRetry(n=>n+1)}/>
   </>;
 }

@@ -12,6 +12,7 @@ import {
   BarChart3,
   Activity,
   ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 const DemoTrend = lazy(() => import("./DemoTrend.jsx"));
 const ExperimentalPrediction = lazy(() => import("./ExperimentalPrediction.jsx"));
@@ -163,12 +164,14 @@ export function Versus({ match }) {
     </>
   );
 }
-export function MatchList({ matches, selectedId, onSelect }) {
-  return matches.map((match) => (
-    <button
+export function MatchList({ matches, selectedId, onSelect, hrefForMatch }) {
+  return matches.map((match) => {
+    const href=hrefForMatch?.(match),Row=href?'a':'button';
+    return <Row
+      {...(href?{href,target:'_blank',rel:'noopener noreferrer','aria-label':`${match.homeTeam.name} vs ${match.awayTeam.name}, ${hasScore(match)?`${match.score.home}–${match.score.away}, `:''}${statusLabel(match.status)}. Open match information in a new tab.`,'aria-current':selectedId===match.id?'true':undefined}:{type:'button','aria-pressed':selectedId===match.id})}
       className={"match-row " + (selectedId === match.id ? "chosen" : "")}
       key={match.id}
-      aria-pressed={selectedId === match.id}
+      data-match-id={match.id}
       onClick={() => onSelect(match.id)}
     >
       <div className="match-top">
@@ -202,10 +205,10 @@ export function MatchList({ matches, selectedId, onSelect }) {
           <small>{statusLabel(match.status)}</small>
           {scoreDetail(match) && <small>{scoreDetail(match)}</small>}
         </div>
-        <ChevronRight className="match-chevron" size={18} />
+        {href?<ExternalLink className="match-chevron" size={18}/>:<ChevronRight className="match-chevron" size={18} />}
       </div>
-    </button>
-  ));
+    </Row>;
+  });
 }
 
 export function TeamStats({ team, demo, refresh = 0 }) {

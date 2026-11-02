@@ -83,6 +83,7 @@ export function createApp({
         predictionCompetitions: ["PL","CL"],
         news: news.status(),
         matchInsightsVersion:1,
+        matchDetailsVersion:1,
         seasonsApiVersion:1,
         lineupSourceConfigured:insights.lineupConfigured,
         scoresMayBeDelayed: true,
@@ -96,6 +97,8 @@ export function createApp({
       const code=competition(params);
       return provider.get(`/competitions/${code}`,900_000,seasonList);
     }
+    const detailMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})$/);
+    if(detailMatch){onlyParams(params,[]);return insights.details(Number(detailMatch[1]));}
     const insightMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})\/(head-to-head|lineups)$/);
     if(insightMatch){onlyParams(params,insightMatch[2]==="lineups"?["view"]:[]);const view=params.get("view")||"reported";if(!["reported","possible"].includes(view))throw badInput("Choose reported or possible lineups.");return insightMatch[2]==="head-to-head"?insights.headToHead(Number(insightMatch[1])):insights.lineups(Number(insightMatch[1]),view==="possible");}
     if(url.pathname==="/api/news/status") {onlyParams(params,[]);return news.status();}

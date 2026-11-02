@@ -2012,3 +2012,20 @@ input::placeholder { color:var(--muted); opacity:1; }
 @media(max-width:600px) { .hero-visual { display:none; } }
 
 @media(max-width:380px) { .breadcrumb { display:none; } }
+
+/* Direct match links keep phone selection independent of the long list. */
+a.match-row { text-decoration:none; }
+.match-open-hint { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:11px; line-height:1.7; margin:0 0 14px; }
+.match-open-hint svg { flex-shrink:0; color:var(--secondary); }
+.match-page { max-width:900px; margin:0 auto; min-width:0; }
+.match-page > * { min-width:0; }
+.match-back { display:inline-flex; width:fit-content; min-height:44px; text-decoration:none; align-items:center; gap:9px; }
+.match-page-heading { font-family:"Poppins",sans-serif; font-size:24px; line-height:1.4; margin:22px 0 8px; overflow-wrap:anywhere; }
+.match-page-heading:focus-visible { outline:2px solid var(--focus); outline-offset:5px; border-radius:4px; }
+.match-page-date { font-size:12px; color:var(--muted); line-height:1.7; margin:0 0 18px; }
+.match-page-tabs { position:sticky; top:0; z-index:3; padding:16px 3px; margin:4px -3px 0; background:var(--page); }
+.match-page-tabs button { min-height:44px; }
+.match-page .match-insights { margin-top:0; }
+.match-page .prediction, .match-page .model-history, .match-page .comparison, .completed-forecast { margin-bottom:18px; }
+.completed-forecast > p { padding:5px 20px 15px; color:var(--muted); font-size:12px; line-height:1.8; }
+@media(max-width:600px) { .match-page-heading { font-size:21px; } }

@@ -28,6 +28,8 @@ import NewsRadar from "./NewsRadar.jsx";
 import MatchInsights from "./MatchInsights.jsx";
 import ThemeControl from "./ThemeControl.jsx";
 import SeasonSelect from "./SeasonSelect.jsx";
+import MatchPage from "./MatchPage.jsx";
+import {readMatchNavigation,matchHref,matchesHref} from "./match-navigation.js";
 import { isoDay, isLive, dayLabel } from "./format.js";
 import {
   Logo,
@@ -261,28 +263,30 @@ function Standings({ league, season:selectedSeason, demo, refresh }) {
 }
 
 export default function App() {
-  const [page, setPage] = useState("Overview");
+  const [navigation,setNavigation]=useState(()=>readMatchNavigation(window.location.hash));
+  const matchViewOpen=Boolean(navigation&&navigation.kind!=='list');
+  const [page, setPage] = useState(()=>navigation?.context.page||"Overview");
   const [mobile, setMobile] = useState(
     () => window.matchMedia("(max-width:850px)").matches,
   );
-  const [league, setLeague] = useState("PL");
-  const [season,setSeason]=useState("");
-  const [selectedId, setSelectedId] = useState(null);
+  const [league, setLeague] = useState(()=>navigation?.context.league||"PL");
+  const [season,setSeason]=useState(()=>navigation?.context.season||"");
+  const [selectedId, setSelectedId] = useState(()=>navigation?.context.selectedId||null);
   const [menu, setMenu] = useState(false);
-  const [search, setSearch] = useState("");
-  const [mode, setMode] = useState("api");
-  const [from, setFrom] = useState(isoDay(-3));
-  const [to, setTo] = useState(isoDay(7));
-  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState(()=>navigation?.context.search||"");
+  const [mode, setMode] = useState(()=>navigation?.context.demo?'demo':'api');
+  const [from, setFrom] = useState(()=>navigation?.context.from||isoDay(-3));
+  const [to, setTo] = useState(()=>navigation?.context.to||isoDay(7));
+  const [filter, setFilter] = useState(()=>navigation?.context.filter||"all");
   const [refresh, setRefresh] = useState(0);
   const [poll, setPoll] = useState(0);
   const config = useResource("/api/config", { refresh, ttl: 5000 });
   const demo = mode === "demo";
   const ready = demo || Boolean(config.data?.configured);
-  const seasons=useResource(`/api/seasons?competition=${league}`,{enabled:ready&&!demo&&page!=="News Radar",refresh,ttl:900_000});
+  const seasons=useResource(`/api/seasons?competition=${league}`,{enabled:ready&&!demo&&!matchViewOpen&&page!=="News Radar",refresh,ttl:900_000});
   const selectedSeason=seasons.data?.data?.seasons?.find(s=>String(s.year)===season);
   const seasonLabel=selectedSeason?.label||season;
-  const schedulePage = ["Overview", "Live Scores", "Predictions"].includes(
+  const schedulePage = !matchViewOpen&&["Overview", "Live Scores", "Predictions"].includes(
     page,
   );
   const invalidDates =
@@ -332,6 +336,7 @@ export default function App() {
   const feedLabel = filter === "results" ? "Results" : "Upcoming";
   const currentLeague = competitions.find((c) => c.code === league);
   const go = (value) => {
+    if(navigation){setNavigation(null);window.history.replaceState(null,'',window.location.pathname+window.location.search);}
     setPage(value);
     setMenu(false);
     window.scrollTo(0, 0);
@@ -342,10 +347,17 @@ export default function App() {
     setSelectedId(null);
   };
   const switchMode = (value) => {
+    if(matchViewOpen){window.location.hash=matchesHref({...navigation.context,demo:value==='demo',season:'',selectedId:null});return;}
     setMode(value);
     setSeason("");
     setSelectedId(null);
   };
+
+  useEffect(()=>{
+    const update=()=>{const next=readMatchNavigation(window.location.hash);setNavigation(next);if(next){const c=next.context;setPage(c.page);setLeague(c.league);setSeason(c.season);setSelectedId(c.selectedId);setSearch(c.search);setMode(c.demo?'demo':'api');setFrom(c.from);setTo(c.to);setFilter(c.filter);}setMenu(false);window.scrollTo(0,0);};
+    window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update);
+  },[]);
+  useEffect(()=>{if(navigation?.kind==='list')window.history.replaceState(null,'',window.location.pathname+window.location.search+matchesHref({league,season,page,filter,from,to,search,demo,selectedId}));},[navigation?.kind,league,season,page,filter,from,to,search,demo,selectedId]);
   const switchFilter = (value) => {
     setFilter(value);
     setSelectedId(null);
@@ -387,7 +399,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <a className="skip-link" href="#main-content">
+      <a className="skip-link" href="#main-content" onClick={e=>{e.preventDefault();document.getElementById('main-content')?.focus();document.getElementById('main-content')?.scrollIntoView();}}>
         Skip to content
       </a>
       <aside
@@ -472,7 +484,7 @@ export default function App() {
             <img className="mobile-brand brand-light" src="/brand/mark-light.svg" alt="FormRadar" width="28" height="28"/>
             <img className="mobile-brand brand-dark" src="/brand/mark-dark.svg" alt="FormRadar" width="28" height="28"/>
             <span className="breadcrumb">
-              <span className="workspace-label">Workspace</span> <ChevronRight size={14} /> <b>{page}</b>
+              <span className="workspace-label">Workspace</span> <ChevronRight size={14} /> <b>{matchViewOpen?'Match information':page}</b>
             </span>
           </div>
           <div className="top-right">
@@ -490,14 +502,14 @@ export default function App() {
             </div>
           </div>
         </header>
-        <main className="content" id="main-content">
+        <main className="content" id="main-content" tabIndex={-1}>
           <div className="page-head">
             <div>
               <div className="eyebrow">
                 <span /> THE FOOTBALL EDGE
               </div>
-              <h1>{headings[page][0]}</h1>
-              <p>{headings[page][1]}</p>
+              <h1>{matchViewOpen?'Match information':headings[page][0]}</h1>
+              <p>{matchViewOpen?'Score, previous meetings, lineups and team details.':headings[page][1]}</p>
             </div>
           </div>
           {demo && (
@@ -534,7 +546,7 @@ export default function App() {
               onRetry={() => setRefresh((n) => n + 1)}
             />
           )}
-          {page === "News Radar" ? (
+          {matchViewOpen ? (ready&&<MatchPage key={`${navigation.kind}-${navigation.id}`} route={navigation} config={config.data} refresh={refresh}/>) : page === "News Radar" ? (
             <NewsRadar league={league} onLeagueChange={switchLeague} refresh={refresh} config={config.data} demo={demo}/>
           ) : (
             ready && (
@@ -776,6 +788,7 @@ export default function App() {
                             </button>
                           ))}
                         </div>
+                        {mobile&&<p className="match-open-hint"><ExternalLink size={13}/> Tap a match to open its information in a new tab.</p>}
                         <div className="dashboard-grid">
                           <div className="left-column">
                             <section className={`panel match-list${season?" season-list":""}`}>
@@ -802,6 +815,7 @@ export default function App() {
                                   matches={matches}
                                   selectedId={selected?.id}
                                   onSelect={setSelectedId}
+                                  hrefForMatch={mobile?(match)=>matchHref(match,{league,season,page,filter,from,to,search,demo}):undefined}
                                 />
                               ) : (
                                 !fixtures.loading &&
@@ -840,7 +854,7 @@ export default function App() {
                               </div>
                             </div>
                           </div>
-                          <div className="right-column">
+                          {!mobile&&<div className="right-column">
                             {selected ? (
                               page === "Predictions" ? (
                                 <Prediction
@@ -889,9 +903,9 @@ export default function App() {
                               </div>
                             )}
                             {selected&&<MatchInsights key={`${selected.id}-${demo}`} match={selected} demo={demo} refresh={refresh} backendCurrent={config.data?.matchInsightsVersion===1}/>}
-                          </div>
+                          </div>}
                         </div>
-                        {selected && (
+                        {selected && !mobile && (
                           <TeamComparison
                             key={`${selected.id}-${demo}`}
                             match={selected}

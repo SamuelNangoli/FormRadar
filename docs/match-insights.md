@@ -4,7 +4,11 @@ Updated 2 November 2026. The interface uses Inter for body text and numbers and 
 
 ## Find the new views
 
-Select a fixture in Overview, Live Scores or Predictions. **Match information** sits beneath its main match/prediction panel. Choose **Head to head**, or **Lineups** (labelled **Lineups used** for completed matches). Open **Predictions → Experimental model** for the interactive scoreline heat map below the forecast.
+On a phone, tap a fixture in Overview, Live Scores or Predictions to open its information in a new browser tab. The selected fixture's score, club crests and full date appear first. Choose **Match info** for **Head to head** or **Lineups** (labelled **Lineups used** for completed matches), **Predictions** for estimates/history, or **Team form** for the current 90-day summary. **Back to matches** restores the competition, season, filters and search. The original list tab stays open, and match links can be reloaded or shared.
+
+Desktop selection retains the inline match/prediction panel with **Match information** beneath it. Open **Predictions → Experimental model** for the interactive scoreline heat map below an eligible forecast. Completed matches never receive newly generated retrospective forecasts; their dedicated page shows only actual saved pre-match history.
+
+`GET /api/matches/:id` retrieves the exact selected fixture through the existing private provider connection and 60-second cache. Direct match pages do not load a full season or off-screen team panels. An invalid, missing or unavailable fixture displays an explicit message instead of silently selecting another match. The hash-based match link works with the existing single-project Vercel configuration.
 
 Stop an older app terminal with Ctrl+C and restart from the nested application directory:
 

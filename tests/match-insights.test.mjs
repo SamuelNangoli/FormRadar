@@ -83,6 +83,29 @@ test("match information rejects credentials reflected into fixture or history fi
   }
 });
 
+test('direct match pages validate the selected fixture, retain score and artwork, and reuse the private provider cache',async()=>{
+  let calls=0;
+  const selected=past({id:500,homeTeam:{...home,crest:'https://crests.football-data.org/64.png',lineup:[{private:'not returned'}]},awayTeam:{...away,crest:'https://crests.football-data.org/57.png'}});
+  const app=createApp({key:TOKEN,now:()=>NOW,fetchImpl:async url=>{calls++;return new Response(JSON.stringify(new URL(url).pathname.endsWith('head2head')?{matches:[]}:selected));}});
+  const server=await listen(app,{port:0}),base=`http://127.0.0.1:${server.address().port}`;
+  try{
+    assert.equal((await fetch(base+'/api/matches/500?url=https://attacker.test')).status,400);assert.equal(calls,0);
+    const first=await(await fetch(base+'/api/matches/500')).json();
+    assert.equal(first.data.match.id,500);assert.equal(first.data.match.status,'FINISHED');assert.deepEqual([first.data.match.score.home,first.data.match.score.away],[2,0]);
+    assert.equal(first.data.match.homeTeam.crest,selected.homeTeam.crest);assert.equal(first.data.match.homeTeam.provider,'football-data.org');assert.equal(JSON.stringify(first).includes('not returned'),false);assert.equal(JSON.stringify(first).includes(TOKEN),false);
+    const cached=await(await fetch(base+'/api/matches/500')).json();assert.equal(cached.meta.cache,'hit');assert.equal(calls,1);
+    await fetch(base+'/api/matches/500/head-to-head');assert.equal(calls,2,'head-to-head reuses the selected-fixture response');
+    assert.equal((await(await fetch(base+'/api/config')).json()).matchDetailsVersion,1);
+  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
+
+test('direct match pages refuse mismatched provider identities and reflected credentials',async()=>{
+  for(const selected of [fixture({id:501}),fixture({awayTeam:home}),fixture({homeTeam:{...home,name:TOKEN}})]){
+    const insights=createMatchInsights({provider:{get:async()=>({data:selected,meta:{}})},secrets:[TOKEN]});
+    await assert.rejects(insights.details(500),e=>e.code==='INVALID_PROVIDER_DATA'&&!e.message.includes(TOKEN));
+  }
+});
+
 test("heat map is a normalized model-derived Poisson grid with honest tail buckets and no 1X2 calibration claim",()=>{
   const symmetric=scorelineMap(1.2,1.2);assert.equal(symmetric.calibrationApplied,false);assert.equal(symmetric.matrix.length,7);assert.ok(Math.abs(symmetric.matrix.flat().reduce((a,b)=>a+b,0)-1)<1e-12);
   symmetric.matrix.forEach((row,h)=>row.forEach((p,a)=>assert.ok(Math.abs(p-symmetric.matrix[a][h])<1e-12)));

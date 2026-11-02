@@ -33,5 +33,6 @@ export function createMatchInsights({provider,lineupKey,lineupFetchImpl,now=Date
     }
     return {data:{...data,fixture:matchView(m),teams:{home:teamView(m.homeTeam),away:teamView(m.awayTeam)},affectsPredictions:false},meta:{...selected.meta,provider:data.provider||"Lineup sources",fetchedAt:data.dataFetchedAt||selected.meta.fetchedAt}};
   }
-  return {headToHead,lineups,lineupConfigured:source.configured};
+  async function details(id){const response=await fixture(id);return {data:{match:matchView(response.data)},meta:response.meta};}
+  return {details,headToHead,lineups,lineupConfigured:source.configured};
 }
