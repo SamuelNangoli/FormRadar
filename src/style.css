@@ -2029,3 +2029,46 @@ a.match-row { text-decoration:none; }
 .match-page .prediction, .match-page .model-history, .match-page .comparison, .completed-forecast { margin-bottom:18px; }
 .completed-forecast > p { padding:5px 20px 15px; color:var(--muted); font-size:12px; line-height:1.8; }
 @media(max-width:600px) { .match-page-heading { font-size:21px; } }
+
+.gameweek-control { margin:0 0 20px; }
+.gameweek-picker { display:flex; align-items:center; gap:10px; }
+.gameweek-picker label { display:grid; gap:5px; color:var(--muted); font-size:11px; min-width:0; }
+.gameweek-picker select { min-height:44px; width:100%; max-width:440px; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:9px; padding:9px 12px; font:inherit; font-size:13px; }
+.gameweek-picker .icon-btn { width:44px; height:44px; flex-shrink:0; align-self:end; border:1px solid var(--border); }
+.gameweek-control p { margin:9px 0 0; color:var(--muted); font-size:11px; line-height:1.7; }
+.overview-news { margin-bottom:24px; min-width:0; }
+.overview-news .section-row h2 { display:flex; align-items:center; gap:9px; }
+.overview-news-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:14px; }
+.overview-story { min-width:0; overflow:hidden; }
+.overview-story:first-child { grid-row:span 3; }
+.overview-story-link { display:grid; grid-template-columns:112px minmax(0,1fr); height:100%; color:var(--text); text-decoration:none; }
+.overview-story:first-child .overview-story-link { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
+.news-picture { min-width:0; background:var(--selected); overflow:hidden; }
+.news-picture img { display:block; width:100%; height:100%; object-fit:cover; }
+.overview-story:first-child .news-picture { aspect-ratio:16/9; }
+.news-picture-empty { min-height:100px; height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:9px; color:var(--muted); font-size:10px; }
+.overview-story-copy { display:flex; flex-direction:column; gap:10px; padding:15px; min-width:0; }
+.overview-story-copy .news-article-meta { margin:0; gap:8px; font-size:10px; }
+.overview-story h3 { margin:0; font-size:14px; line-height:1.6; overflow-wrap:anywhere; }
+.overview-story:first-child h3 { font-family:Poppins,Inter,sans-serif; font-size:22px; line-height:1.5; }
+.overview-story time { color:var(--muted); font-size:10px; }
+.story-read { display:flex; align-items:center; gap:7px; color:var(--accent); font-size:11px; margin-top:auto; }
+.overview-story-link:hover h3 { color:var(--accent); }
+.overview-story-link:focus-visible { outline:3px solid var(--focus); outline-offset:-4px; }
+.news-overview-notice { padding:24px; color:var(--muted); font-size:13px; line-height:1.8; }
+.news-radar-picture { width:170px; height:110px; float:right; margin:0 0 12px 18px; border-radius:9px; }
+.news-article::after { content:''; display:block; clear:both; }
+.fabrizio-link { display:flex; align-items:center; gap:18px; padding:22px; margin-bottom:24px; }
+.fabrizio-mark { font-size:32px; color:var(--text); }
+.fabrizio-link h2 { font-size:15px; margin:0 0 6px; }
+.fabrizio-link p { color:var(--muted); font-size:12px; line-height:1.8; margin:0; }
+.fabrizio-link .quiet-button { margin-left:auto; display:flex; gap:8px; align-items:center; text-decoration:none; white-space:nowrap; }
+@media(max-width:900px){.overview-story:first-child h3{font-size:18px;}.overview-story-link{grid-template-columns:88px minmax(0,1fr);}.overview-story-copy{padding:12px;}}
+@media(max-width:600px){
+  .overview-news .section-row{align-items:flex-start;gap:12px;}.overview-news .section-row .quiet-button{font-size:10px;padding:10px;flex-shrink:0;}.overview-news .section-row h2{font-size:17px;}
+  .overview-news-grid{grid-template-columns:minmax(0,1fr);}.overview-story:first-child{grid-row:auto;}.overview-story:first-child h3{font-size:18px;}.overview-story h3{font-size:12px;}.overview-story-link{grid-template-columns:90px minmax(0,1fr);}
+  .gameweek-picker{gap:6px;}.gameweek-picker label{flex:1;}.gameweek-picker select{font-size:11px;padding:9px 6px;}.gameweek-picker .icon-btn{width:40px;}
+  .news-radar-picture{width:100%;height:155px;float:none;margin:0 0 15px;}.fabrizio-link{flex-wrap:wrap;padding:18px;gap:12px;}.fabrizio-link>div{flex:1;min-width:180px;}.fabrizio-link .quiet-button{margin-left:0;width:100%;justify-content:center;}
+}
+@media(max-width:600px){.gameweek-picker{flex-wrap:wrap;}.gameweek-reset{flex-basis:100%;min-height:40px;justify-content:center;}}
+@media(max-width:600px){.section-row:has(>.filters){flex-wrap:wrap;align-items:flex-start;}.section-row>.filters{max-width:none;width:100%;}}

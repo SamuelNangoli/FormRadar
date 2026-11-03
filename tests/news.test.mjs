@@ -66,3 +66,22 @@ test("news routes expose setup safely, validate before quota, resolve provider t
     const config=await(await fetch(base+"/api/config")).json();assert.equal(config.news.configured,true);assert.equal(config.news.affectsPredictions,false);
   });
 });
+
+test('thumbnail metadata accepts only trusted Guardian image URLs and never returns article bodies',async()=>{
+  const {guardianThumbnailUrl}=await import('../shared/news-media.js');
+  const url='https://media.guim.co.uk/abc/0_0_800_480/500.jpg';
+  assert.equal(guardianThumbnailUrl(url),url);
+  for(const bad of ['http://media.guim.co.uk/a.jpg','https://attacker.test/a.jpg','https://media.guim.co.uk.attacker.test/a.jpg','https://secret@media.guim.co.uk/a.jpg','https://media.guim.co.uk/a.jpg?api-key=secret','data:image/png;base64,a'])assert.equal(guardianThumbnailUrl(bad),null);
+  const rows=normalizeNews(response([article({fields:{thumbnail:url,body:'private full article'}})]),NOW);
+  assert.equal(rows[0].thumbnail,url);assert.equal(JSON.stringify(rows).includes('private full article'),false);
+  assert.equal(normalizeNews(response([article()]),NOW)[0].thumbnail,null);
+});
+
+test('Overview latest news uses all football reporting, requests thumbnails and reuses the cached response',async()=>{
+  let calls=0;
+  await server({key:FOOTBALL,guardianKey:TOKEN,now:()=>NOW,newsFetchImpl:async target=>{calls++;const u=new URL(target);assert.equal(u.searchParams.get('section'),'football');assert.equal(u.searchParams.get('q'),'');assert.equal(u.searchParams.get('show-fields'),'thumbnail');return ok(response([article({fields:{thumbnail:'https://media.guim.co.uk/a/500.jpg'}})]));}},async base=>{
+    assert.equal((await fetch(base+'/api/news/latest?url=https://attacker.test')).status,400);assert.equal(calls,0);
+    const body=await(await fetch(base+'/api/news/latest')).json();assert.equal(body.data.competition,null);assert.equal(body.data.articles[0].thumbnail,'https://media.guim.co.uk/a/500.jpg');assert.equal(body.data.affectsPredictions,false);assert.equal(JSON.stringify(body).includes(TOKEN),false);
+    const repeat=await(await fetch(base+'/api/news/latest')).json();assert.equal(repeat.meta.cache,'hit');assert.equal(calls,1);
+  });
+});

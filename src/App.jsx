@@ -25,9 +25,11 @@ import { competitions } from "../shared/competitions.js";
 import { useResource } from "./api.js";
 import { demoMatches, demoStandings } from "./demo.js";
 import NewsRadar from "./NewsRadar.jsx";
+import OverviewNews from './OverviewNews.jsx';
 import MatchInsights from "./MatchInsights.jsx";
 import ThemeControl from "./ThemeControl.jsx";
 import SeasonSelect from "./SeasonSelect.jsx";
+import GameweekSelect from './GameweekSelect.jsx';
 import MatchPage from "./MatchPage.jsx";
 import {readMatchNavigation,matchHref,matchesHref} from "./match-navigation.js";
 import { isoDay, isLive, dayLabel } from "./format.js";
@@ -56,7 +58,7 @@ const nav = [
 const headings = {
   Overview: [
     "Your football, decoded.",
-    "Real match data, team form and a clear view of the game.",
+    "Latest football reporting, match fixtures and team form, with clear sources.",
   ],
   "Live Scores": [
     "Match centre",
@@ -271,6 +273,7 @@ export default function App() {
   );
   const [league, setLeague] = useState(()=>navigation?.context.league||"PL");
   const [season,setSeason]=useState(()=>navigation?.context.season||"");
+  const [round,setRound]=useState(()=>navigation?.context.round||'');
   const [selectedId, setSelectedId] = useState(()=>navigation?.context.selectedId||null);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(()=>navigation?.context.search||"");
@@ -290,7 +293,7 @@ export default function App() {
     page,
   );
   const invalidDates =
-    !season && (!from ||
+    filter!=='all' && !season && (!from ||
     !to ||
     from > to ||
     (Date.parse(to) - Date.parse(from)) / 86_400_000 > 30);
@@ -300,17 +303,18 @@ export default function App() {
   });
   const matchEndpoint =
     filter === "upcoming" ? "fixtures" : filter === "results" ? "results" : "matches";
-  const fixtures = useResource(`/api/${matchEndpoint}?${query}`, {
+  const gameweekQuery=new URLSearchParams({competition:league,...(season?{season}:{}),...(round?{round}:{})});
+  const fixtures = useResource(filter==='all'?`/api/gameweek?${gameweekQuery}`:`/api/${matchEndpoint}?${query}`, {
     enabled: ready && !demo && schedulePage && !invalidDates,
     refresh: refresh + poll,
     ttl: filter === "results" ? 300_000 : 60_000,
   });
   const allMatches = demo
     ? demoMatches(league).filter(
-        (m) => m.utcDate.slice(0, 10) >= from && m.utcDate.slice(0, 10) <= to,
+        (m) => filter==='all'||m.utcDate.slice(0, 10) >= from && m.utcDate.slice(0, 10) <= to,
       )
     : (fixtures.data?.data?.matches || []).filter(
-        (m) => season || m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to,
+        (m) => filter==='all'||season || m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to,
       );
   const matches = allMatches.filter((m) => {
     const matchesSearch =
@@ -344,20 +348,22 @@ export default function App() {
   const switchLeague = (code) => {
     setLeague(code);
     setSeason("");
+    setRound('');
     setSelectedId(null);
   };
   const switchMode = (value) => {
     if(matchViewOpen){window.location.hash=matchesHref({...navigation.context,demo:value==='demo',season:'',selectedId:null});return;}
     setMode(value);
     setSeason("");
+    setRound('');
     setSelectedId(null);
   };
 
   useEffect(()=>{
-    const update=()=>{const next=readMatchNavigation(window.location.hash);setNavigation(next);if(next){const c=next.context;setPage(c.page);setLeague(c.league);setSeason(c.season);setSelectedId(c.selectedId);setSearch(c.search);setMode(c.demo?'demo':'api');setFrom(c.from);setTo(c.to);setFilter(c.filter);}setMenu(false);window.scrollTo(0,0);};
+    const update=()=>{const next=readMatchNavigation(window.location.hash);setNavigation(next);if(next){const c=next.context;setPage(c.page);setLeague(c.league);setSeason(c.season);setRound(c.round||'');setSelectedId(c.selectedId);setSearch(c.search);setMode(c.demo?'demo':'api');setFrom(c.from);setTo(c.to);setFilter(c.filter);}setMenu(false);window.scrollTo(0,0);};
     window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update);
   },[]);
-  useEffect(()=>{if(navigation?.kind==='list')window.history.replaceState(null,'',window.location.pathname+window.location.search+matchesHref({league,season,page,filter,from,to,search,demo,selectedId}));},[navigation?.kind,league,season,page,filter,from,to,search,demo,selectedId]);
+  useEffect(()=>{if(navigation?.kind==='list')window.history.replaceState(null,'',window.location.pathname+window.location.search+matchesHref({league,season,round,page,filter,from,to,search,demo,selectedId}));},[navigation?.kind,league,season,round,page,filter,from,to,search,demo,selectedId]);
   const switchFilter = (value) => {
     setFilter(value);
     setSelectedId(null);
@@ -553,42 +559,14 @@ export default function App() {
               <>
                 {page === "Overview" && (
                   <>
-                    <section className="hero">
-                      <div className="hero-copy">
-                        <div className="hero-tag">
-                          <span className="pulse" /> FORM, CONTEXT, CLARITY
-                        </div>
-                        <h2>
-                          See the form.
-                          <br />
-                          <em>Read the game.</em>
-                        </h2>
-                        <p>
-                          Follow the fixtures. Compare recent results. Find the
-                          details that bring a match into focus.
-                        </p>
-                        <button onClick={() => go("Leagues")}>
-                          Explore league tables <ArrowUpRight size={17} />
-                        </button>
-                      </div>
-                      <div className="hero-visual" aria-hidden="true">
-                        <div className="radar-ring r1" />
-                        <div className="radar-ring r2" />
-                        <div className="radar-ring r3" />
-                        <img className="brand-light hero-brand" src="/brand/mark-light.svg" alt="" width="180" height="180"/>
-                        <img className="brand-dark hero-brand" src="/brand/mark-dark.svg" alt="" width="180" height="180"/>
-                        <div className="floating-stat">
-                          <Activity size={15} />{" "}
-                          {demo ? "SYNTHETIC PREVIEW" : "FOOTBALL FEED READY"}
-                        </div>
-                      </div>
-                    </section>
+                    <OverviewNews config={config.data} demo={demo} refresh={refresh} onViewAll={()=>go("News Radar")}/>
+                    <aside className="panel fabrizio-link"><span className="fabrizio-mark" aria-hidden="true">𝕏</span><div><h2>Fabrizio Romano on X</h2><p>Follow his profile for transfer reporting and football updates.</p></div><a className="quiet-button" href="https://x.com/FabrizioRomano" target="_blank" rel="noopener noreferrer">Open @FabrizioRomano <ExternalLink size={14}/></a></aside>
                     <div className="stat-grid">
                       <Stat
                         title={
                           filter === "results" ? "Completed results"
                             : filter === "upcoming" ? "Upcoming fixtures"
-                              : "Matches in this window"
+                              : filter==='all' ? "Matches this gameweek" : "Matches in this window"
                         }
                         value={matchCount}
                         foot={currentLeague.name}
@@ -623,7 +601,7 @@ export default function App() {
                 )}
                 {page === "Leagues" ? (
                   <>
-                    <SeasonSelect resource={seasons} value={season} demo={demo} onChange={value=>{setSeason(value);setSelectedId(null);}}/>
+                    <SeasonSelect resource={seasons} value={season} demo={demo} onChange={value=>{setSeason(value);setRound('');setSelectedId(null);}}/>
                     <div className="league-grid">
                       {competitions.map((c) => (
                         <button
@@ -682,12 +660,12 @@ export default function App() {
                         </select>
                       </label>
                     </div>
-                    <SeasonSelect resource={seasons} value={season} demo={demo} onChange={value=>{setSeason(value);setFilter(value?"results":"all");setSelectedId(null);}}/>
+                    <SeasonSelect resource={seasons} value={season} demo={demo} onChange={value=>{setSeason(value);setRound('');setFilter(value?"results":"all");setSelectedId(null);}}/>
                     {season&&<div className="season-notice">Viewing the {seasonLabel} season. Historical fixtures and results use your account's available coverage. Current team statistics remain a separate last-90-days summary.</div>}
                     {season&&<label className="fixture-search season-search"><Search size={16}/><input aria-label="Search teams" placeholder="Search teams in this season…" value={search} onChange={e=>setSearch(e.target.value)}/>{search&&<button className="icon-btn" aria-label="Clear search" onClick={()=>setSearch("")}><X size={14}/></button>}</label>}
                     {!season&&
                     <div className="fixture-controls">
-                      <div className="date-controls">
+                      {filter!=='all'&&<><div className="date-controls">
                         <label>
                           From{" "}
                           <input
@@ -743,6 +721,7 @@ export default function App() {
                           Last 7 days
                         </button>
                       </div>
+                      </>}
                       <label className="fixture-search">
                         <Search size={16} />
                         <input
@@ -788,13 +767,14 @@ export default function App() {
                             </button>
                           ))}
                         </div>
+                        {filter==='all'&&<GameweekSelect resource={fixtures} demo={demo} historical={Boolean(season)} onChange={value=>{setRound(value);setSelectedId(null);}}/>}
                         {mobile&&<p className="match-open-hint"><ExternalLink size={13}/> Tap a match to open its information in a new tab.</p>}
                         <div className="dashboard-grid">
                           <div className="left-column">
                             <section className={`panel match-list${season?" season-list":""}`}>
                               <div className="panel-title">
                                 <span>
-                                  <CalendarDays size={17} /> {season?`${seasonLabel} season`:`${dayLabel(from)} – ${dayLabel(to)}`}
+                                  <CalendarDays size={17} /> {filter==='all'?(demo?'Demo fixtures':fixtures.data?.data?.round?.label||'Gameweek fixtures'):season?`${seasonLabel} season`:`${dayLabel(from)} – ${dayLabel(to)}`}
                                 </span>
                                 <span className="subtle">
                                   {awaitingMatches ? "Awaiting data"
@@ -815,20 +795,19 @@ export default function App() {
                                   matches={matches}
                                   selectedId={selected?.id}
                                   onSelect={setSelectedId}
-                                  hrefForMatch={mobile?(match)=>matchHref(match,{league,season,page,filter,from,to,search,demo}):undefined}
+                                  hrefForMatch={mobile?(match)=>matchHref(match,{league,season,round:filter==='all'?fixtures.data?.data?.round?.key:round,page,filter,from,to,search,demo}):undefined}
                                 />
                               ) : (
                                 !fixtures.loading &&
                                 !fixtures.error && (
                                   <div className="no-results">
-                                    No fixtures match these filters. Try another
-                                    date, competition or search.
+                                    {filter==='all'?'No fixtures with gameweek information match this selection. Try another gameweek, competition or search.':'No fixtures match these filters. Try another date, competition or search.'}
                                   </div>
                                 )
                               )}
                               <SourceNote resource={fixtures} demo={demo} />
                             </section>
-                            <div className="panel mini-news">
+                            {page!=="Overview"&&<div className="panel mini-news">
                               <div className="panel-title">
                                 <span>
                                   <Newspaper size={17} /> News radar
@@ -852,7 +831,7 @@ export default function App() {
                                   </p>
                                 </div>
                               </div>
-                            </div>
+                            </div>}
                           </div>
                           {!mobile&&<div className="right-column">
                             {selected ? (

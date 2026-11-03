@@ -6,6 +6,8 @@ import { createPredictions } from "./predictions.mjs";
 import { createNews, newsTopics } from "./news.mjs";
 import { createMatchInsights } from "./match-insights.mjs";
 import {seasonYear,seasonList} from "./seasons.mjs";
+import {scheduleView} from './schedule.mjs';
+import {createGameweeks,validRound} from './gameweeks.mjs';
 import {CloudStoreError} from "./cloud-store.mjs";
 import {
   ApiError,
@@ -68,8 +70,11 @@ export function createApp({
   hosted = false,
 } = {}) {
   const sharedStore=cloudStore?.configured?cloudStore:undefined;
-  const provider = createProvider({ key, baseUrl, fetchImpl, now, maxCalls, sharedStore });
+  // Earlier shared fixture caches lack the phase fields needed to separate
+  // tournament rounds. Start fresh without touching model/forecast storage.
+  const provider = createProvider({ key, baseUrl, fetchImpl, now, maxCalls, sharedStore, cacheVersion:2 });
   const predictions = createPredictions({ root: modelRoot, provider, now, store:sharedStore, hosted });
+  const gameweeks = createGameweeks({provider,now});
   const news = createNews({key:guardianKey,fetchImpl:newsFetchImpl,now,sharedStore});
   const insights = createMatchInsights({provider,lineupKey,lineupFetchImpl,now,sharedStore,secrets:[key,guardianKey,lineupKey]});
   async function api(url) {
@@ -85,6 +90,7 @@ export function createApp({
         matchInsightsVersion:1,
         matchDetailsVersion:1,
         seasonsApiVersion:1,
+        gameweeksApiVersion:1,
         lineupSourceConfigured:insights.lineupConfigured,
         scoresMayBeDelayed: true,
         hosting:hosted?"vercel":"local",
@@ -97,11 +103,18 @@ export function createApp({
       const code=competition(params);
       return provider.get(`/competitions/${code}`,900_000,seasonList);
     }
+    if(url.pathname==='/api/gameweek'){
+      onlyParams(params,['competition','season','round']);
+      const code=competition(params),year=seasonYear(params,now()),round=params.get('round')||'';
+      if(params.has('round')&&!validRound(round))throw badInput('Choose a valid gameweek.');
+      return gameweeks(code,year,round);
+    }
     const detailMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})$/);
     if(detailMatch){onlyParams(params,[]);return insights.details(Number(detailMatch[1]));}
     const insightMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})\/(head-to-head|lineups)$/);
     if(insightMatch){onlyParams(params,insightMatch[2]==="lineups"?["view"]:[]);const view=params.get("view")||"reported";if(!["reported","possible"].includes(view))throw badInput("Choose reported or possible lineups.");return insightMatch[2]==="head-to-head"?insights.headToHead(Number(insightMatch[1])):insights.lineups(Number(insightMatch[1]),view==="possible");}
     if(url.pathname==="/api/news/status") {onlyParams(params,[]);return news.status();}
+    if(url.pathname==='/api/news/latest'){onlyParams(params,[]);return news.get({competition:null});}
     if(url.pathname==="/api/news") {
       onlyParams(params,["competition","teamId","topic"]);
       const code=competition(params),topic=params.get("topic")||"all",id=params.get("teamId");
@@ -157,41 +170,7 @@ export function createApp({
       return provider.get(
         `/competitions/${code}/matches?${query}`,
         fullSeason ? 900_000 : results ? 300_000 : 60_000,
-        (raw) => {
-          if (
-            !Array.isArray(raw?.matches) || raw.matches.length>1000 || raw.matches.some((m) =>
-              !m || !Number.isInteger(m.id) || typeof m.utcDate !== "string" ||
-              !Number.isFinite(Date.parse(m.utcDate)) || typeof m.status !== "string",
-            )
-          )
-            throw new ApiError(
-              502,
-              "INVALID_PROVIDER_DATA",
-              "The provider returned an invalid fixture list.",
-            );
-          if(year!==null&&(raw.filters?.season!==undefined&&Number(raw.filters.season)!==year||raw.matches.some(m=>m.season?.startDate!==undefined&&(!validDate(m.season.startDate)||Number(m.season.startDate.slice(0,4))!==year))))throw new ApiError(502,"INVALID_PROVIDER_DATA","The provider returned a different season. No results were substituted.");
-          return {
-            competition: code,
-            competitionInfo: competitionView(raw.competition, code),
-            season:year,
-            fullSeason,
-            dateFrom:fullSeason?null:from,
-            dateTo:fullSeason?null:to,
-            matches: raw.matches
-              .filter((m) => (fullSeason || m.utcDate.slice(0,10) >= from && m.utcDate.slice(0,10) <= to)
-                && (!statuses || statuses.includes(m.status)))
-              .map((m) =>
-                matchView({
-                  ...m,
-                  competition: m.competition || competitionView(raw.competition, code),
-                }),
-              )
-              .sort((a, b) =>
-                results ? b.utcDate.localeCompare(a.utcDate)
-                  : a.utcDate.localeCompare(b.utcDate),
-              ),
-          };
-        },
+        raw => scheduleView(raw,{code,year,fullSeason,from,to,statuses,results}),
       );
     }
     if (url.pathname === "/api/standings") {

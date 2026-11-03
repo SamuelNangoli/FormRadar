@@ -27,3 +27,10 @@ test('malformed links cannot select an unrelated fixture or inject paths, season
   assert.equal(parsed.id,538155);assert.equal(parsed.context.league,'PL');assert.equal(parsed.context.season,'');assert.equal(parsed.context.page,'Live Scores');assert.equal(parsed.context.filter,'all');assert.notEqual(parsed.context.from,'2026-02-31');
   assert.equal(parsed.context.search,'<a href="https://attacker.test">');
 });
+
+test('phone match links and Back to matches retain the exact selected gameweek',()=>{
+  const c={...context,round:'REGULAR_SEASON:10',filter:'all'};
+  const route=readMatchNavigation(matchHref({id:538155},c));
+  assert.deepEqual(route.context,c);assert.deepEqual(readMatchNavigation(matchesHref(route.context)).context,c);
+  assert.equal(readMatchNavigation('#match/538155?round='+encodeURIComponent('https://attacker.test')).context.round,undefined);
+});

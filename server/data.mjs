@@ -75,6 +75,7 @@ export function matchView(match) {
     utcDate: match.utcDate,
     status: match.status,
     matchday: match.matchday ?? null,
+    stage: typeof match.stage === 'string' ? match.stage : null,
     minute: match.minute ?? null,
     competition: competitionView(match.competition),
     homeTeam: teamView(match.homeTeam),
@@ -140,6 +141,7 @@ export function createProvider({
   now = Date.now,
   maxCalls = 9,
   cacheLimit = 200,
+  cacheVersion = 1,
   sharedStore,
 } = {}) {
   // Never send credentials to a configurable third-party host or follow redirects.
@@ -306,7 +308,7 @@ export function createProvider({
       try {
         if(sharedStore){
           let stored;
-          try{stored=await sharedStore.readProvider(path);}catch{throw new ApiError(503,"CLOUD_STORAGE_UNAVAILABLE","The shared football cache could not be reached. Retry shortly.");}
+          try{stored=await sharedStore.readProvider(cacheVersion===1?path:`v${cacheVersion}:${path}`);}catch{throw new ApiError(503,"CLOUD_STORAGE_UNAVAILABLE","The shared football cache could not be reached. Retry shortly.");}
           if(stored&&Number.isFinite(stored.at)&&stored.at<=now()&&now()-stored.at<=86_400_000&&Object.hasOwn(stored,'data')){
             if(!entry||stored.at>entry.at)entry=stored;
             if(now()-entry.at<ttl){if(cache.size>=cacheLimit&&!cache.has(path))cache.delete(cache.keys().next().value);cache.set(path,entry);return envelope(entry,"hit");}
@@ -316,7 +318,7 @@ export function createProvider({
         if (cache.size >= cacheLimit && !cache.has(path))
           cache.delete(cache.keys().next().value);
         cache.set(path, item);
-        if(sharedStore)await sharedStore.writeProvider(path,item).catch(()=>{});
+        if(sharedStore)await sharedStore.writeProvider(cacheVersion===1?path:`v${cacheVersion}:${path}`,item).catch(()=>{});
         return envelope(item, "miss");
       } catch (error) {
         if (

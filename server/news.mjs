@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { ApiError } from "./data.mjs";
 import { competitions } from "../shared/competitions.js";
+import {guardianThumbnailUrl} from '../shared/news-media.js';
 
 const TTL = 600_000, MAX_STALE = 21_600_000;
 const topics = { all:"", injuries:"(injury OR injured OR fitness OR suspension OR suspended)", lineups:"(lineup OR squad OR selection OR team news)", transfers:"(transfer OR signing OR loan)" };
@@ -28,7 +29,7 @@ export function normalizeNews(raw, now = Date.now()) {
     if(!url || !title || !Number.isFinite(published) || published>now+300_000)continue;
     const id=createHash("sha256").update(url).digest("hex").slice(0,24);
     found.set(url,{id,provider:"the-guardian",source:"The Guardian",title,url,publishedAt:new Date(published).toISOString(),
-      kind:item.type==="liveblog"?"Live report":"Article",verification:"publisher-report",affectsPredictions:false});
+      thumbnail:guardianThumbnailUrl(item.fields?.thumbnail),kind:item.type==="liveblog"?"Live report":"Article",verification:"publisher-report",affectsPredictions:false});
   }
   return [...found.values()].sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0,20);
 }
@@ -57,7 +58,7 @@ export function createNews({ key, fetchImpl=fetch, now=Date.now, maxPerMinute=30
     if(now()<cooldownUntil)throw new ApiError(cooldownError.status,cooldownError.code,cooldownError.message,Math.ceil((cooldownUntil-now())/1000));
     const url=new URL("https://content.guardianapis.com/search");
     url.search=new URLSearchParams({"api-key":key.trim(),section:"football",q:query,"order-by":"newest","page-size":"20",
-      "from-date":new Date(now()-14*86_400_000).toISOString().slice(0,10),"to-date":today});
+      "show-fields":"thumbnail","from-date":new Date(now()-14*86_400_000).toISOString().slice(0,10),"to-date":today});
     let response;
     try {response=await fetchImpl(url.href,{headers:{Accept:"application/json"},redirect:"error",signal:AbortSignal.timeout(12_000)});}
     catch {throw cooldown(new ApiError(502,"NEWS_UNAVAILABLE","Could not reach The Guardian. Please retry shortly.",15),15);}
@@ -72,11 +73,11 @@ export function createNews({ key, fetchImpl=fetch, now=Date.now, maxPerMinute=30
   async function get({competition="PL",topic="all",team=null}={}) {
     if(!configured)throw new ApiError(503,"NEWS_SETUP_REQUIRED","Add GUARDIAN_API_KEY to your local .env file and restart FormRadar to enable News Radar.");
     const league=competitions.find(c=>c.code===competition);
-    if(!league||!newsTopics.includes(topic))throw new ApiError(400,"INVALID_REQUEST","Choose a supported news competition and topic.");
+    if((!league&&competition!==null)||!newsTopics.includes(topic)||competition===null&&(topic!=='all'||team))throw new ApiError(400,"INVALID_REQUEST","Choose a supported news competition and topic.");
     const names=team?[...new Set([team.name,team.shortName].filter(Boolean).map(n=>clean(n,120).replace(/\b(?:FC|CF|AFC)\b/g,"").trim()).filter(Boolean))]:[];
     if(team&&!names.length)throw new ApiError(502,"NEWS_TEAM_INVALID","This team could not be identified for news filtering.");
     const subject=team?{provider:"football-data.org",id:team.id,name:clean(team.shortName||team.name,120)}:null;
-    const query=(team?'('+names.map(phrase).join(" OR ")+')':phrase(phrases[competition]||league.name))+(topics[topic]?" AND "+topics[topic]:"");
+    const query=(team?'('+names.map(phrase).join(" OR ")+')':competition===null?'':phrase(phrases[competition]||league.name))+(topics[topic]?" AND "+topics[topic]:"");
     const id=JSON.stringify([competition,topic,subject?.id||null]);
     const entry=cache.get(id);
     const envelope=(item,stale=false,warning)=>({data:{competition,topic,team:subject,teamScope:team?"all competitions":null,articles:item.articles,affectsPredictions:false},

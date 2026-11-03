@@ -3,6 +3,7 @@ import {Newspaper,ExternalLink,Info,KeyRound,RefreshCw} from "lucide-react";
 import {useResource} from "./api.js";
 import {competitions} from "../shared/competitions.js";
 import {Loading,ErrorNotice} from "./components.jsx";
+import NewsImage from './NewsImage.jsx';
 
 const date=(v)=>new Date(v).toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"});
 export default function NewsRadar({league,onLeagueChange,refresh,config,demo}) {
@@ -35,6 +36,7 @@ export default function NewsRadar({league,onLeagueChange,refresh,config,demo}) {
         {meta?.stale&&<div className="mode-banner" role="status"><Info size={17}/><span>Showing previously fetched headlines. {meta.warning} Published times remain visible.</span></div>}
         {data?.team&&<p className="news-filter-note">Reporting about <b>{data.team.name}</b> across competitions. A search match does not confirm a player’s availability.</p>}
         {articles.map(a=><article className="news-article" key={a.id}>
+          <NewsImage article={a} className="news-radar-picture"/>
           <div className="news-article-meta"><span>The Guardian</span><time dateTime={a.publishedAt}>{date(a.publishedAt)}</time><span>{a.kind}</span></div>
           <h3><a href={a.url} target="_blank" rel="noreferrer">{a.title} <ExternalLink size={14}/></a></h3>
           <p>Publisher reporting · read the original source for full context</p>
