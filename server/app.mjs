@@ -3,6 +3,8 @@ import { readFile, stat } from "node:fs/promises";
 import { resolve, relative, extname, sep } from "node:path";
 import { competitions } from "../shared/competitions.js";
 import { createPredictions } from "./predictions.mjs";
+import { createPredictionDemo } from "./prediction-service.mjs";
+import {createSeasonProvider} from './formradar-football.mjs';
 import { createNews, newsTopics } from "./news.mjs";
 import { createMatchInsights } from "./match-insights.mjs";
 import {seasonYear,seasonList} from "./seasons.mjs";
@@ -68,15 +70,21 @@ export function createApp({
   lineupFetchImpl,
   cloudStore,
   hosted = false,
+  predictionServiceUrl = process.env.FORMRADAR_API_URL,
+  predictionServiceKey = process.env.FORMRADAR_API_KEY,
+  predictionServiceFetchImpl,
 } = {}) {
   const sharedStore=cloudStore?.configured?cloudStore:undefined;
-  // Earlier shared fixture caches lack the phase fields needed to separate
-  // tournament rounds. Start fresh without touching model/forecast storage.
-  const provider = createProvider({ key, baseUrl, fetchImpl, now, maxCalls, sharedStore, cacheVersion:2 });
+  // Earlier shared fixture caches lack goal events and stoppage-time fields.
+  // Start fresh without touching model/forecast storage.
+  const primary = createProvider({ key, baseUrl, fetchImpl, now, maxCalls, sharedStore, cacheVersion:3 });
+  const provider = createSeasonProvider({primary,url:predictionServiceUrl,key:predictionServiceKey,fetchImpl:predictionServiceFetchImpl,now,hosted});
   const predictions = createPredictions({ root: modelRoot, provider, now, store:sharedStore, hosted });
+  const predictionDemo = createPredictionDemo({ url: predictionServiceUrl,
+    key: predictionServiceKey, fetchImpl: predictionServiceFetchImpl, now });
   const gameweeks = createGameweeks({provider,now});
   const news = createNews({key:guardianKey,fetchImpl:newsFetchImpl,now,sharedStore});
-  const insights = createMatchInsights({provider,lineupKey,lineupFetchImpl,now,sharedStore,secrets:[key,guardianKey,lineupKey]});
+  const insights = createMatchInsights({provider,lineupKey,lineupFetchImpl,now,sharedStore,secrets:[key,guardianKey,lineupKey,predictionServiceKey]});
   async function api(url) {
     const params = url.searchParams;
     if (url.pathname === "/api/config" || url.pathname === "/api/health") {
@@ -85,9 +93,13 @@ export function createApp({
         provider: "football-data.org",
         predictions: "experimental",
         predictionsApiVersion: 2,
+        predictionServiceDemoVersion: hosted ? 0 : 1,
+        formRadarFootballConfigured:provider.formRadarConfigured,
+        liveEventsVersion:1,
         predictionCompetitions: ["PL","CL"],
         news: news.status(),
         matchInsightsVersion:1,
+        playerContextVersion:1,
         matchDetailsVersion:1,
         seasonsApiVersion:1,
         gameweeksApiVersion:1,
@@ -97,6 +109,10 @@ export function createApp({
         cloudStorageConfigured:Boolean(sharedStore),
         competitions,
       };
+    }
+    if (url.pathname === "/api/prediction-service/demo" && !hosted) {
+      onlyParams(params, []);
+      return predictionDemo.check();
     }
     if(url.pathname==="/api/seasons"){
       onlyParams(params,["competition"]);
@@ -111,6 +127,8 @@ export function createApp({
     }
     const detailMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})$/);
     if(detailMatch){onlyParams(params,[]);return insights.details(Number(detailMatch[1]));}
+    const playerMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})\/player-context$/);
+    if(playerMatch){onlyParams(params,[]);return insights.playerContext(Number(playerMatch[1]));}
     const insightMatch=url.pathname.match(/^\/api\/matches\/([1-9]\d{0,6})\/(head-to-head|lineups)$/);
     if(insightMatch){onlyParams(params,insightMatch[2]==="lineups"?["view"]:[]);const view=params.get("view")||"reported";if(!["reported","possible"].includes(view))throw badInput("Choose reported or possible lineups.");return insightMatch[2]==="head-to-head"?insights.headToHead(Number(insightMatch[1])):insights.lineups(Number(insightMatch[1]),view==="possible");}
     if(url.pathname==="/api/news/status") {onlyParams(params,[]);return news.status();}

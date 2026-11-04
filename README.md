@@ -1,5 +1,10 @@
 # FormRadar v0.2
 
+**New:** [Connect your FastAPI service for 2026 fixtures, match minutes and
+goalscorers](docs/connect-your-api.md). [Player form and possible XIs](docs/player-context.md)
+explain the supported data and coverage requirements. The Python service source
+is included in `services/prediction-api`; private keys and trained artifacts are excluded.
+
 A local React/Vite football dashboard with a Node.js backend. It uses the Pulse Core identity and Porcelain Indigo palette, with matching light and dark appearances inspired by prediction markets and score apps. FormRadar is not affiliated with Polymarket or LiveScore.
 
 ## Ubuntu: install and run
@@ -24,6 +29,12 @@ You can start without a token: choose **Open demo preview**. This is an explicit
 Your existing `~/Desktop/Projects/FormRadar/.env` is now loaded automatically. Keep your verified `FOOTBALL_DATA_API_KEY` and `FOOTBALL_DATA_BASE_URL` there; you do not need to copy the token into the nested application folder. Stop the old server and restart to load the configuration.
 
 Configuration precedence is: host environment, then the application's `.env`, then the original parent `FormRadar/.env`. An explicitly empty value in a higher-priority source also takes precedence. Paths are resolved from the server files, independently of the terminal's working directory.
+
+The existing local `FormRadar/ai-service/.client.env` is loaded last for the
+private FastAPI connection. The 2026 season fixture lists and selected-match
+details use its new authenticated football routes when configured. A service
+failure falls back to the direct feed with a source warning. Hosted connections
+require an HTTPS API host; they cannot use a laptop's loopback address.
 
 For a fresh setup without an existing `.env`:
 
@@ -170,6 +181,14 @@ Official API references:
 
 ## Verification
 
+The API/player/live-detail update passes 107 Node tests, 25 FastAPI tests and
+the production build. Isolated browser tests cover player form, absence-aware
+eleven-player estimates, stoppage time, goalscorers, missing details and phone
+layout using synthetic fixtures. A real 2026/27 check returned 380 PL fixtures
+through the authenticated FastAPI route. The selected real match had no clock
+or goalscorer fields, so those details remain explicitly unavailable. The
+current result-based models were not retrained or replaced.
+
 ```bash
 npm run model:setup    # needed for the Python/Node parity check
 npm test
@@ -199,6 +218,7 @@ shared/              Supported competition metadata
 docs/                Plan for a real evaluated prediction model and media guidance
 model/               Historical/current import, pinned Python setup, trainer and tests
 server/              HTTP API, provider cache, statistics, experimental predictions/history
+services/prediction-api/  FastAPI service source; credentials and models excluded
 scripts/dev.mjs      Starts Vite and the backend together
 tests/api.test.mjs    Backend and security behaviour tests
 .env.example         Empty server configuration template

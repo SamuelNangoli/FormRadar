@@ -8,7 +8,7 @@
   "functions": {
     "api/**/*.js": {
       "maxDuration": 60,
-      "excludeFiles": "{.env*,.formradar-model/**,.venv-model/**,model/**/*.py,model/**/requirements*.txt,model/setup.mjs,model/import.mjs,model/run.mjs,model/current.mjs,model/champions.mjs,tests/**,docs/**,node_modules/@esbuild/**,node_modules/esbuild/**,node_modules/vite/**}"
+      "excludeFiles": "{.env*,.client*.env,services/**,.formradar-model/**,.venv-model/**,model/**/*.py,model/**/requirements*.txt,model/setup.mjs,model/import.mjs,model/run.mjs,model/current.mjs,model/champions.mjs,tests/**,docs/**,node_modules/@esbuild/**,node_modules/esbuild/**,node_modules/vite/**}"
     }
   },
   "rewrites": [

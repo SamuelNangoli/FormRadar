@@ -43,7 +43,7 @@ export const statusLabel = (status) =>
   "TBC";
 export const hasScore = (match) =>
   Number.isInteger(match.score?.home) && Number.isInteger(match.score?.away);
-export const isLive = (match) => ["IN_PLAY", "PAUSED"].includes(match.status);
+export const isLive = (match) => ["IN_PLAY", "PAUSED", "EXTRA_TIME", "PENALTY_SHOOTOUT"].includes(match.status);
 export const scoreDetail = (match) => {
   if (match.score?.duration === "PENALTY_SHOOTOUT") {
     const penalties = match.score.penalties;

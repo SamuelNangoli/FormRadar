@@ -1,11 +1,12 @@
 import { loadEnvFile } from "node:process";
 import { fileURLToPath } from "node:url";
 
-// Host environment > application .env > original FormRadar/.env.
+// Host environment > application .env > original .env > local demo caller.
 // Resolve from this module so starting the app from another directory works.
 export function loadServerEnv(files = [
   fileURLToPath(new URL("../.env", import.meta.url)),
   fileURLToPath(new URL("../../../.env", import.meta.url)),
+  fileURLToPath(new URL("../../../ai-service/.client.env", import.meta.url)),
 ]) {
   for (const file of files) {
     try {

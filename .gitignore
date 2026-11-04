@@ -2,6 +2,10 @@ node_modules/
 dist/
 .env
 .env.*
+.client*.env
+.venv/
+.pytest_cache/
+services/prediction-api/models/
 !.env.example
 *.log
 .DS_Store

@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+.env.*
+!.env.example
+.client.env
+.client-next.env
+node_modules/
+models/*.joblib
+data/
+*.log

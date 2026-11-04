@@ -1,4 +1,5 @@
 import {ApiError} from "./data.mjs";
+import {recentFixtures,buildPlayerTeam} from "./player-context.mjs";
 
 const leagues={PL:39,CL:2,PD:140,BL1:78,SA:135,FL1:61,ELC:40,DED:88,PPL:94,BSA:71,EC:4,WC:1};
 const text=(v,max=100)=>typeof v==="string"?v.replace(/[\u0000-\u001f]/g,"").trim().slice(0,max):"";
@@ -10,7 +11,7 @@ export function apiStartingXI(raw,expectedProviderTeamId){
   const side=Array.isArray(raw)?raw.find(s=>s.team?.id===expectedProviderTeamId):null;
   if(!side||!Array.isArray(side.startXI))return null;
   const ids=new Set(),players=[];
-  for(const entry of side.startXI){const p=entry?.player;if(!Number.isSafeInteger(p?.id)||p.id<=0||!text(p.name)||ids.has(p.id))return null;ids.add(p.id);players.push({provider:"api-football",id:p.id,name:text(p.name),shirtNumber:Number.isInteger(p.number)?p.number:null,position:text(p.pos,40)||null});}
+  for(const entry of side.startXI){const p=entry?.player;if(!Number.isSafeInteger(p?.id)||p.id<=0||!text(p.name)||ids.has(p.id))return null;ids.add(p.id);players.push({provider:"api-football",id:p.id,name:text(p.name),shirtNumber:Number.isInteger(p.number)?p.number:null,position:text(p.pos,40)||null,grid:/^[1-6]:[1-6]$/.test(p.grid||"")?p.grid:null});}
   if(players.length!==11)return null;
   const bench=(Array.isArray(side.substitutes)?side.substitutes:[]).flatMap(e=>Number.isSafeInteger(e?.player?.id)&&text(e.player.name)?[{provider:"api-football",id:e.player.id,name:text(e.player.name),shirtNumber:Number.isInteger(e.player.number)?e.player.number:null,position:text(e.player.pos,40)||null}]:[]).slice(0,25);
   return {players,bench,formation:/^\d{1,2}(?:-\d{1,2}){1,5}$/.test(side.formation||"")?side.formation:null,coach:text(side.coach?.name)||null};
@@ -79,5 +80,48 @@ export function createLineupSource({key,fetchImpl=fetch,now=Date.now,maxCalls=8,
     if(!result.available)Object.assign(result,missing("LINEUPS_NOT_PUBLISHED",match.status==="FINISHED"?"This provider did not return the starting lineups used for this match.":"Starting lineups have not been supplied for this fixture. Try again near kickoff, or view a recent starting-XI reference."));
     return result;
   }
-  return {configured,lineups};
+  async function playerContext(match){
+    if(!configured)return missing("LINEUP_KEY_REQUIRED","Connect an entitled API-Football key to see player ratings, recent form and availability.");
+    const league=leagues[match.competition?.code];
+    if(!league)return missing("LINEUP_COMPETITION_UNSUPPORTED","Player matching is not configured for this competition.");
+    const date=match.utcDate.slice(0,10),year=Number(date.slice(0,4)),month=Number(date.slice(5,7));
+    const season=["BSA","EC","WC"].includes(match.competition.code)?year:month>=7?year:year-1;
+    const mapped=matchFixture(await get(`/fixtures?league=${league}&season=${season}&date=${date}&timezone=UTC`),match);
+    if(!mapped)return missing("LINEUP_FIXTURE_UNMATCHED","No unique matching fixture was found. Player data was not attached to a different match.");
+    if(mapped.testOnly===true||mapped.teams?.home?.id===mapped.teams?.away?.id)throw new ApiError(502,"LINEUP_DATA_INVALID","The lineup fixture identity could not be validated.");
+    const issues=[],cutoff=Math.min(now(),Date.parse(match.utcDate)),future=Date.parse(match.utcDate)>now();
+    const safe=async(path,ttl,area)=>{try{return await get(path,ttl);}catch(e){issues.push({area,code:e instanceof ApiError?e.code:"LINEUP_SOURCE_UNAVAILABLE",message:e instanceof ApiError?e.message:"This player data is temporarily unavailable."});return null;}};
+    const lineupPath=`/fixtures/lineups?fixture=${mapped.fixture.id}`;
+    const lineups=await safe(lineupPath,match.status==="FINISHED"?86400000:120000,"Starting XI");
+    const injuryPath=`/injuries?fixture=${mapped.fixture.id}`;
+    const injuries=await safe(injuryPath,3600000,"Injuries and suspensions");
+    const history={},squads={},from=new Date(cutoff-30*86400000).toISOString().slice(0,10),to=new Date(cutoff).toISOString().slice(0,10);
+    for(const side of ["home","away"]){
+      const teamId=mapped.teams[side]?.id;
+      if(!Number.isSafeInteger(teamId)||teamId<=0)throw new ApiError(502,"LINEUP_DATA_INVALID","The lineup provider returned an invalid team identity.");
+      history[side]=recentFixtures(await safe(`/fixtures?team=${teamId}&from=${from}&to=${to}&status=FT-AET-PEN&timezone=UTC`,900000,`${side} recent matches`),teamId,cutoff);
+      squads[side]=future?await safe(`/players/squads?team=${teamId}`,900000,`${side} current squad`):null;
+    }
+    const ids=[...new Set([...history.home,...history.away].map(f=>f.fixture.id))].sort((a,b)=>a-b);
+    const bundles=ids.length?await safe(`/fixtures?ids=${ids.join("-")}`,86400000,"Recent player ratings"):[];
+    const result={available:true,provider:"API-Football",scope:{maxMatches:3,lookbackDays:30,cutoff:new Date(cutoff).toISOString(),ratingScale:"0 to 10; provider performance grades"},
+      dataFetchedAt:new Date(now()).toISOString(),injuriesAvailable:injuries!==null,
+      availabilityAsOf:cache.has(injuryPath)?new Date(cache.get(injuryPath).at).toISOString():null,
+      ratingDataAsOf:ids.length&&cache.has(`/fixtures?ids=${ids.join("-")}`)?new Date(cache.get(`/fixtures?ids=${ids.join("-")}`).at).toISOString():null,
+      issues,affectsPredictions:false,modelStatus:"Player-aware training and chronological evaluation are required before these values change match probabilities."};
+    for(const side of ["home","away"]){
+      const teamId=mapped.teams[side].id;
+      const team=buildPlayerTeam({teamId,history:history[side],bundles,squadRows:squads[side],injuries,fixtureId:mapped.fixture.id,normalizeXI:apiStartingXI,cutoff});
+      const official=apiStartingXI(lineups,teamId);
+      team.reported=official?{...official,kind:match.status==="FINISHED"?"used":"reported"}:null;
+      if(!future)team.possible=null;
+      if(team.reported)team.possible=team.reported;
+      team.absenceCoverage=injuries!==null?"provider-report":"unavailable";
+      result[side]=team;
+    }
+    result.available=[result.home,result.away].some(s=>s.players.length||s.reported||s.absences.length);
+    if(!result.available)Object.assign(result,missing("PLAYER_DATA_UNAVAILABLE","No usable player details were returned for this fixture. Check season coverage and try again later."));
+    return result;
+  }
+  return {configured,lineups,playerContext};
 }

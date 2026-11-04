@@ -16,9 +16,12 @@ import {
 } from "lucide-react";
 const DemoTrend = lazy(() => import("./DemoTrend.jsx"));
 const ExperimentalPrediction = lazy(() => import("./ExperimentalPrediction.jsx"));
+const PredictionServiceDemo = lazy(() => import("./PredictionServiceDemo.jsx"));
 import { useResource } from "./api.js";
 import { demoStats } from "./demo.js";
 import { entityImage } from "../shared/media.js";
+import {clockText} from '../shared/match-events.js';
+import GoalScorers from './GoalScorers.jsx';
 import {
   localDate,
   kickOff,
@@ -110,7 +113,7 @@ export function SourceNote({ resource, demo = false }) {
     >
       <Info size={13} />
       <span>
-        {stale ? "Showing older cached data. " : ""}football-data.org ·
+        {stale ? "Showing older cached data. " : ""}{meta.provider||'football-data.org'} ·
         Retrieved {new Date(meta.fetchedAt).toLocaleString()} · Scores may be
         delayed.{meta.warning && ` ${meta.warning}`}
       </span>
@@ -151,7 +154,7 @@ export function Versus({ match }) {
           <small>
             {match.status === "TIMED"
               ? kickOff(match.utcDate)
-              : statusLabel(match.status)}
+              : isLive(match) ? clockText(match) : statusLabel(match.status)}
           </small>
           {scoreDetail(match) && <small>{scoreDetail(match)}</small>}
         </div>
@@ -161,6 +164,7 @@ export function Versus({ match }) {
           <small>AWAY</small>
         </div>
       </div>
+      <GoalScorers match={match}/>
     </>
   );
 }
@@ -181,7 +185,7 @@ export function MatchList({ matches, selectedId, onSelect, hrefForMatch }) {
         </span>
         <span className={isLive(match) ? "live-label" : ""}>
           {isLive(match)
-            ? `● ${statusLabel(match.status)}${match.minute != null ? ` ${match.minute}′` : ""}`
+            ? `● ${clockText(match)}`
             : localDate(match.utcDate)}
         </span>
       </div>
@@ -202,11 +206,12 @@ export function MatchList({ matches, selectedId, onSelect, hrefForMatch }) {
             : match.status === "TIMED"
               ? kickOff(match.utcDate)
               : "—"}
-          <small>{statusLabel(match.status)}</small>
+          <small>{isLive(match)?clockText(match):statusLabel(match.status)}</small>
           {scoreDetail(match) && <small>{scoreDetail(match)}</small>}
         </div>
         {href?<ExternalLink className="match-chevron" size={18}/>:<ChevronRight className="match-chevron" size={18} />}
       </div>
+      <GoalScorers match={match} compact/>
     </Row>;
   });
 }
@@ -331,14 +336,15 @@ export function TeamComparison({ match, demo, refresh }) {
   );
 }
 
-export function Prediction({ match, demo, refresh, backendCurrent }) {
+export function Prediction({ match, demo, refresh, backendCurrent, apiDemoEnabled = false }) {
   const [view, setView] = useState("model");
   return <>
-    {!demo && <div className="fixture-tabs prediction-modes" aria-label="Prediction mode">
-      <button className={view === "model" ? "active" : ""} aria-pressed={view === "model"} onClick={() => setView("model")}>Experimental model</button>
-      <button className={view === "demo" ? "active" : ""} aria-pressed={view === "demo"} onClick={() => setView("demo")}>Demo examples</button>
+    {(!demo || apiDemoEnabled) && <div className="fixture-tabs prediction-modes" aria-label="Prediction mode">
+      {!demo && <button className={view === "model" ? "active" : ""} aria-pressed={view === "model"} onClick={() => setView("model")}>Experimental model</button>}
+      <button className={view === "demo" || demo && view !== "service" ? "active" : ""} aria-pressed={view === "demo" || demo && view !== "service"} onClick={() => setView("demo")}>Demo examples</button>
+      {apiDemoEnabled && <button className={view === "service" ? "active" : ""} aria-pressed={view === "service"} onClick={() => setView("service")}>API demo</button>}
     </div>}
-    {demo || view === "demo" ? <DemoPrediction match={match} /> : <Suspense fallback={<Loading label="Loading model view…" />}><ExperimentalPrediction match={match} refresh={refresh} backendCurrent={backendCurrent} /></Suspense>}
+    {view === "service" && apiDemoEnabled ? <Suspense fallback={<Loading label="Loading connection demo…"/>}><PredictionServiceDemo/></Suspense> : demo || view === "demo" ? <DemoPrediction match={match} /> : <Suspense fallback={<Loading label="Loading model view…" />}><ExperimentalPrediction match={match} refresh={refresh} backendCurrent={backendCurrent} /></Suspense>}
   </>;
 }
 

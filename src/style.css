@@ -2072,3 +2072,50 @@ a.match-row { text-decoration:none; }
 }
 @media(max-width:600px){.gameweek-picker{flex-wrap:wrap;}.gameweek-reset{flex-basis:100%;min-height:40px;justify-content:center;}}
 @media(max-width:600px){.section-row:has(>.filters){flex-wrap:wrap;align-items:flex-start;}.section-row>.filters{max-width:none;width:100%;}}
+.api-demo-connected { display:flex; align-items:center; gap:8px; color:var(--accent); margin-top:22px; font-weight:600; font-size:13px; }
+.api-demo-probabilities { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:18px 0; }
+.api-demo-probabilities > div { min-width:0; padding:16px 10px; border:1px solid var(--border); border-radius:10px; background:var(--surface); text-align:center; }
+.api-demo-probabilities span { display:block; color:var(--muted); font-size:12px; }
+.api-demo-probabilities strong { display:block; margin-top:8px; color:var(--text); font-size:26px; }
+.prediction-service-demo .primary-button:disabled { opacity:.65; cursor:wait; }
+.prediction-service-demo > .primary-button { margin:0 18px 4px; }
+.api-demo-result { padding:0 18px; }
+.api-demo-result > h3 { font-size:18px; margin:18px 0 0; }
+.api-demo-result > .source-note { padding:0; }
+.insight-tabs,.lineup-view { flex-wrap:wrap; }
+.player-context-team { padding:18px; border-bottom:1px solid var(--border); min-width:0; }
+.player-context-team h4 { margin:20px 0 9px; font-size:13px; }
+.player-context-team .lineup-team { padding:10px 12px; border-radius:8px; }
+.player-context-team .lineup-team > span { margin-left:0; }
+.player-context-note,.player-selection p,.player-absences p,.player-context-history,.player-context-issues { font-size:11px; line-height:1.8; color:var(--muted); }
+.player-form-table { min-width:450px; width:100%; font-size:11px; border-collapse:collapse; }
+.player-form-table th,.player-form-table td { padding:10px 8px; text-align:center; border-bottom:1px solid var(--border); }
+.player-form-table th:first-child { text-align:left; min-width:145px; }
+.player-form-table small { display:block; font-weight:400; color:var(--muted); font-size:10px; margin-top:4px; }
+.player-form-table tbody th span { font-size:11px; }
+.possible-players { list-style:none; padding:0; margin:12px 0; }
+.possible-players li { display:grid; grid-template-columns:32px minmax(0,1fr) auto; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--border); font-size:11px; }
+.possible-players li>span,.possible-players small { color:var(--muted); font-size:10px; }
+.possible-players b { overflow-wrap:anywhere; }
+.player-absences ul { list-style:none; padding:0; }
+.player-absences li { padding:10px 0; border-bottom:1px solid var(--border); font-size:11px; }
+.player-absences li>span { margin-left:9px; font-size:10px; }
+.player-absences small { display:block; margin-top:5px; color:var(--muted); }
+.availability-out { color:var(--error); }
+.availability-doubtful { color:var(--warning); }
+.player-context-issues { padding:12px 18px; }
+.player-context-history summary,.player-context-issues summary { cursor:pointer; }
+.player-expand { margin-top:10px; }
+.goal-scorers { border-top:1px solid var(--border); margin-top:18px; padding:14px 18px 0; text-align:left; }
+.goal-scorers > .source-note { padding:0; margin:12px 0; }
+.goal-scorers h3 { font-size:14px; margin:0 0 12px; }
+.scorer-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.scorer-columns > div > b { display:block; font-size:12px; margin-bottom:8px; }
+.scorer-columns ul { list-style:none; padding:0; margin:0; }
+.scorer-columns li { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:8px; font-size:13px; padding:3px 0; }
+.scorer-columns li > span { overflow-wrap:anywhere; }
+.scorer-columns small { white-space:nowrap; color:var(--muted); }
+.goal-scorers.compact { margin-top:8px; padding:8px 0 0; }
+.goal-scorers.compact .scorer-columns > div > b { font-size:10px; color:var(--muted); }
+.goal-scorers.compact .scorer-columns li { font-size:11px; }
+@media(max-width:480px) { .scorer-columns { grid-template-columns:1fr; gap:12px; } }

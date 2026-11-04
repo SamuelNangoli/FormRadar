@@ -35,9 +35,11 @@ try {
         deny: [
           ".env",
           ".env.*",
+          "**/.client*.env",
           "*.{crt,pem}",
           "**/.git/**",
           "**/server/**",
+          "**/services/**",
           "**/tests/**",
           "**/.formradar-model/**",
           "**/.venv-model/**",

@@ -21,6 +21,7 @@
     "model:refit": "node model/run.mjs refit",
     "model:prepare-current": "node model/current.mjs",
     "model:prepare-cl": "node model/champions.mjs",
+    "model:capture-players": "node model/capture-player-context.mjs",
     "model:test": "node model/run.mjs test",
     "model:publish": "node model/cloud.mjs"
   },

@@ -1,5 +1,6 @@
 import { competitions } from "../shared/competitions.js";
 import { FOOTBALL_PROVIDER, safeFootballImageUrl } from "../shared/media.js";
+import {normalizeGoals,safeMinute,safeInjuryTime} from '../shared/match-events.js';
 
 export class ApiError extends Error {
   constructor(status, code, message, retryAfter = 0) {
@@ -76,7 +77,9 @@ export function matchView(match) {
     status: match.status,
     matchday: match.matchday ?? null,
     stage: typeof match.stage === 'string' ? match.stage : null,
-    minute: match.minute ?? null,
+    minute: safeMinute(match.minute),
+    injuryTime: safeInjuryTime(match.injuryTime),
+    ...normalizeGoals(match),
     competition: competitionView(match.competition),
     homeTeam: teamView(match.homeTeam),
     awayTeam: teamView(match.awayTeam),

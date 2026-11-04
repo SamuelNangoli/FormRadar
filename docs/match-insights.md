@@ -1,5 +1,19 @@
 # Match information and scoreline heat map
 
+## Player information update on 3 November 2026
+
+Match information now includes **Player form** for recent provider ratings,
+starts, minutes, goals, assists and reported injuries or suspensions. The
+**Possible XI** view uses recent starts, current-squad membership, formation and
+reported availability where coverage permits. A provider-reported XI takes
+precedence. Read [Player form availability and possible lineups](player-context.md)
+for data requirements, coverage limits and the separate pre-kickoff model feature
+capture command. The current Poisson probabilities do not yet use player inputs.
+
+The historical `lineups?view=possible` endpoint below retains its recent-XI
+reference behavior for compatibility. The updated Possible XI interface uses
+`/api/matches/:id/player-context` for availability-aware candidate selections.
+
 Updated 2 November 2026. The interface uses Inter for body text and numbers and Poppins for display headings, loaded through Google Fonts with system fallbacks.
 
 ## Find the new views

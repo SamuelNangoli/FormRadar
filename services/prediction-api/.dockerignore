@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.env
+.env.*
+.client*.env
+node_modules
+data
+models
+tests
+scripts

@@ -35,7 +35,7 @@ export default function MatchPage({route,config,refresh}){
         <section className="panel match-detail"><div className="panel-title"><span><Activity size={18}/> {match.status==='FINISHED'?'Match result':'Selected match'}</span><span className="ai-badge">{demo?'DEMO FIXTURE':'PROVIDER DATA'}</span></div><Versus match={match}/><SourceNote resource={resource} demo={demo}/></section>
         <div className="fixture-tabs match-page-tabs" aria-label="Match views">{[['info','Match info'],['predictions','Predictions'],['form','Team form']].map(([value,label])=><button key={value} aria-pressed={tab===value} className={tab===value?'active':''} onClick={()=>setTab(value)}>{label}</button>)}</div>
         {tab==='info'&&<MatchInsights key={`${match.id}-${demo}`} match={match} demo={demo} refresh={refresh+poll} backendCurrent={config?.matchInsightsVersion===1}/>}
-        {tab==='predictions'&&(completed&&!demo?<CompletedForecasts match={match} refresh={refresh} backendCurrent={config?.predictionsApiVersion===2}/>:<Prediction match={match} demo={demo} refresh={refresh+poll} backendCurrent={config?.predictionsApiVersion===2}/>)}
+        {tab==='predictions'&&(completed&&!demo?<CompletedForecasts match={match} refresh={refresh} backendCurrent={config?.predictionsApiVersion===2}/>:<Prediction match={match} demo={demo} refresh={refresh+poll} backendCurrent={config?.predictionsApiVersion===2} apiDemoEnabled={config?.predictionServiceDemoVersion===1}/>)}
         {tab==='form'&&<><p className="season-notice">Team form covers the latest 90 days. For a historical match, this is a current summary rather than form recorded at that kickoff.</p><TeamComparison match={match} demo={demo} refresh={refresh}/></>}
       </>}
     </>}

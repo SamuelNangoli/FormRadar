@@ -842,6 +842,7 @@ export default function App() {
                                   demo={demo}
                                   refresh={refresh + poll}
                                   backendCurrent={config.data?.predictionsApiVersion === 2}
+                                  apiDemoEnabled={config.data?.predictionServiceDemoVersion === 1}
                                 />
                               ) : (
                                 <section className="panel match-detail">

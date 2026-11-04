@@ -34,5 +34,13 @@ export function createMatchInsights({provider,lineupKey,lineupFetchImpl,now=Date
     return {data:{...data,fixture:matchView(m),teams:{home:teamView(m.homeTeam),away:teamView(m.awayTeam)},affectsPredictions:false},meta:{...selected.meta,provider:data.provider||"Lineup sources",fetchedAt:data.dataFetchedAt||selected.meta.fetchedAt}};
   }
   async function details(id){const response=await fixture(id);return {data:{match:matchView(response.data)},meta:response.meta};}
-  return {details,headToHead,lineups,lineupConfigured:source.configured};
+  async function playerContext(id){
+    const selected=await fixture(id);
+    if(selected.data.testOnly===true)throw new ApiError(502,"INVALID_PROVIDER_DATA","Test-only fixture data cannot supply live player context.");
+    const data=await source.playerContext(selected.data);
+    isolate(data);
+    return {data:{...data,fixture:matchView(selected.data),teams:{home:teamView(selected.data.homeTeam),away:teamView(selected.data.awayTeam)},affectsPredictions:false},
+      meta:{...selected.meta,provider:"API-Football",fetchedAt:data.dataFetchedAt||selected.meta.fetchedAt}};
+  }
+  return {details,headToHead,lineups,playerContext,lineupConfigured:source.configured};
 }
